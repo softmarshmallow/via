@@ -1,0 +1,3 @@
+# The kit revised: its window block re-exported 1.1 times as long (packs/revised.toml; the model
+# is written by packs/make_revised.py from the fetched one). Nothing else changes.
+pack = "packs/revised.toml"

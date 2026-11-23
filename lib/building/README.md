@@ -790,6 +790,57 @@ which `lay` judged against the ground it read.
 Not built: a plot that keeps trees off (it has no `keep_out`; a kit's pieces would be warned
 of, as on a pad), and one plot for several buildings that are not a court.
 
+### Someone else's kit (K10)
+
+Asked by `examples/borrowed`: Kenney's Modular Buildings 2.1 (CC0), 109 models nobody here made,
+laid from a pack that says what is true of the files and fits nothing. What it showed, in the
+order a build said it (that example's README has each output):
+
+- **The kit is blocks, not panels.** Every building piece is a closed box 1 by 1 in plan and
+  0.625 high, the window or the door on its +z face. The contract holds: a block is a wall piece
+  as thick as the block (`shared.wall = 1`), a building is blocks round its outline, and a
+  corner is a block whose reach is the wall's thickness (rule 6's default). Kenney's corners have
+  their outside faces on +x and +z, ours on the front and the front turned a quarter right, so
+  the pack turns them (`front = "+x"`); nothing in the library changed for it.
+- **A door that is a block** (rule 6). Kenney's door piece is a wall block with the doorway
+  through it, where ours were leaves in a gap. Stated as it is (`shared.door = 0.25`, the
+  doorway's width), the gap is 0.35 m, each stretch beside it is shortened to whole blocks, and
+  the door block fills the metre left: rule 6 as it stood. Unstated, the doorway is the
+  library's 1 m and the wall leaves 1.9 m open (`gap_wide`). One fault: a stretch beside a gap
+  that no piece fits was shortened only to a length some piece makes, never to none, so a door
+  block in the bay beside a corner left 0.325 m open. Now that stretch goes (rule 6), and only
+  a stretch shorter than the kit's smallest piece can go. **Said either side.** K10's review
+  found the cost: the door piece stands on the door's own middle, so where a stretch went (or
+  was shortened) on one side only the piece stood off the opening's middle, and the widths alone
+  passed: a village door 1.24 m along its side left 0.19 m open beside its piece and said
+  nothing. `gap_wide` now judges the open wall on each side of the door piece as it stands, from
+  the faces of what was laid. A sweep of door places 10 mm apart on rectangles of six kits (plain,
+  city, village, order, timber, Kenney's), reading the holes from what was laid and not from the
+  notes, finds none unsaid; the same sweep finds 240 in the village kit and 264 in Kenney's with
+  the library before K10, so the fault was older than the change that showed it.
+- **A roof is not a floor** (rule 10, `role:roof_flat`). The flat roof was laid with the floor
+  tile. Kenney's roof tile stands its thickness proud, level with its border's flat part, and the
+  kit has no floor tile, since a building of closed blocks has no inside to floor. A kit's flat
+  roof now takes its own tile where it has one.
+- **A building as deep as its corners** (check.py rule 10). Kenney's hipped roof is made for a
+  building two blocks deep: two corner blocks and nothing between. `check` held a slope under
+  eaves to a depth with at least one piece between the corners and called the kit wrong.
+- **Not the library's, said:**
+  - **Scale.** The kit is in its own units: a doorway 0.25 by 0.5, a storey 0.625. The contract
+    takes model units as metres and leaves a model at another scale open (spec/assets.md 2.3),
+    so the town is a quarter of a person's size and every person's measure says so (a doorway
+    under a block: `door_narrow`). A factor belongs in the pack, applied where a model is
+    measured, so no library reads a scaled number; filed under `spec/assets.md`.
+  - **A variant proud of the wall.** Eight of Kenney's 23 window blocks have a sill, an awning or
+    a balcony 0.025 to 0.075 m past the block's face, and rule 8 refuses each as a variant, as
+    K3 decided (a variant is the bay's whole box). Kept: allowing a front proud of the bay would
+    reverse a ruling a test pins, for dressing that a pack could place as its own piece.
+  - **Corners with windows** (nine corner blocks) have no place: corners have no variants.
+  - **Kenney's gable** is a ridge for a building one block deep, whole, not two slopes and two
+    gable halves; and a hip over an L (its inner corner piece) is not built (K8).
+  - **Steps to a door** (four step blocks): not built since K7.
+  - **Door and window leaves** that sit in a block's hole, and whole sample houses: no role.
+
 ## What the M5 worlds need from it
 
 - `station`: four tower storeys and a cottage storey; three spiral flights; six doorways; lamps and

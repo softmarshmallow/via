@@ -1,0 +1,4 @@
+# BEFORE: the kit as a studio would hand it over (packs/plain.toml): each piece's role and pitch
+# and what the pieces share, read off the files, and nothing more. What this pack lacks is what
+# packs/kenney.toml adds (README.md, "Before").
+pack = "packs/plain.toml"

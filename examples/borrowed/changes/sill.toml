@@ -1,0 +1,6 @@
+# The kit's window with a sill (packs/sill.toml) asked for on the house's upper storey. Its sill
+# stands 0.05 proud of the block's face.
+pack = "packs/sill.toml"
+
+[feature.house]
+fill = [{ storeys = [1], sides = "all", pattern = ["sill", "windows"] }]

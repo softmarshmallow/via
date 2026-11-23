@@ -1,7 +1,6 @@
 # via: the kit plan
 
-Status: approved 2026-11-20, running. Committed: the research (cc99109), K1 and K2 (f529008),
-K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6 in two commits (aa93d3a, the kit stating what its pieces share; bc2ac73, the city block). K7 so far in two commits (e469406, the wall's foot; 26cb33f, a storey's own outline); its third slice, the roof on an L, is built and follows them with K7's review. K8 is one commit after it (2d88999, the temple and the court), and K9 one after that (a mount's rise and joints in the core, pipes and the works). K11, the fantasy map, was built before K10, whose download waits on the owner's yes; it is one commit after K9. Next: K10. K11 (a fantasy map) was added on 2026-11-23. The plan after the first cut (`docs/plan.md`): own the
+Status: approved 2026-11-20, done 2026-11-24. Committed locally: the research (cc99109), K1 and K2 (f529008), K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6 in two commits (aa93d3a, bc2ac73); K7 in three (e469406, 26cb33f, 5a9dfa6); K8 (2d88999); K9 (8c9ba2c); K11 (9b8c2c8), built before K10 while K10's download waited on the owner; K10 last, with the plan's closing review (`docs/design/kit-review.md`). Nothing is pushed. The plan after the first cut (`docs/plan.md`): own the
 modular building system, not only where a settlement stands, and review the archetypes and the
 SDK against what it shows.
 
@@ -152,6 +151,20 @@ Changed so far:
   The review's gravest findings were older than K9 and only met by it: warm builds after a
   pack edit. They are mended in the core with their cases. **Not built, said and filed:** a
   joint across an import, a veto of one pair, a pipe that takes its heights from its ports.
+
+- **K10, 2026-11-24.** The owner allowed the download (Kenney's Modular Buildings 2.1, CC0,
+  1.8 MB); it is fetched on demand by `examples/borrowed/fetch.py`, checked by its sha256, and
+  never committed. **What the kit showed:** it is a kit of whole closed blocks, not panels, at a
+  quarter of a person's size; it fits the contract with five stated facts and three quarter
+  turns, after two small mends (a flat roof of the kit's own tile; a stretch beside a door that
+  no piece fits goes, and what is left either side of the door piece is said). It lacks a floor,
+  a stair, an inside corner and a filler, and its bevelled corners and hip leave the eaves open
+  at the corners, which a box cannot see: the example measures roofs from the triangles. **The
+  last review** became its own page, `docs/design/kit-review.md`, written by an agent that did
+  none of the work: a third of what kit authors typed was copied off a model's box; the storey's
+  height is restated 19 times across eight worlds; the corners' turns, the one fact worked out
+  by hand for the real kit, are checked by nothing; and challenge 33 does not close (it says
+  what is owed). Its ranked list of what is owed is this plan's hand-over.
 
 - **K11, 2026-11-24.** Built before K10, since K10's download waits on the owner and the map
   needs nothing from it; K10's last review now has the map's figures to read. One world, no

@@ -40,7 +40,8 @@ A piece lies along its x axis with its front on +y. A wall piece is as thick as 
 | `corner_in` | lib/building | The inside corner of a building's outline. Placed by the middle of its notch (`pivot = "origin"`). |
 | `door` | lib/building | What stands in a doorway: a frame or a leaf. Its width is the kit's door size. |
 | `roof` | lib/building | One piece for a whole roof, where a building asks for none by name. |
-| `floor` | lib/building | A square tile, one module on a side, sunk by its thickness. It tiles each storey's floor inside the walls, and a flat roof. |
+| `floor` | lib/building | A square tile, one module on a side, sunk by its thickness. It tiles each storey's floor inside the walls, and a flat roof where the kit has no `roof_flat`. |
+| `roof_flat` | lib/building | A flat roof's tile, square like the floor's, standing on the walls' top unsunk: a kit's roof is not its floor (K10, Kenney's tile stands level with its border's flat part, and the kit has no floor). |
 | `roof_slope` | lib/building | A wedge from the eave to the ridge, `params.pitch` along the eave and `params.span` deep. A kit may hold several, one for each depth of building it roofs: the one whose span is half the roof's depth is taken, and the gable, hip and valley of that span with it (K8). |
 | `roof_gable` | lib/building | Half a gable: a wall one span long, as thick as the bay, rising to the ridge. Two stand at each end of a gable roof, the second turned about. |
 | `roof_hip` | lib/building | The roof over an outer corner: one span square, eaves on its front and its +x side, climbing to the hip between them. One on the outer corner of an L under a gable (K7); one on each corner of a rectangle under a hipped roof, `roof = "hip"` (K8). |
@@ -67,9 +68,10 @@ lib/building's `check` holds the kit to them (`lib/building/check.py`, rule 9):
 
 That these are worked out twice, and stated nowhere once, is the gap the research calls "the kit
 as a unit". Ruled at K5 (R66 in `docs/doctrine.md`): a kit is no archetype of its own, but assets
-filed together as a kit must state once what they share, and a rule must lay by that. The pack's
-taxon is to carry those facts; it does not yet, and this table is still how they are read. Owed
-at K6, with the second kit.
+filed together as a kit must state once what they share, and a rule must lay by that. Since K6
+the pack's taxon carries those facts (`defaults.shared`, the next section); this table is how a
+reader works a fact out where the kit does not state it, and what `check` holds a stated one
+against.
 
 ## What a kit states
 

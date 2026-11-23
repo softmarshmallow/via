@@ -1,0 +1,179 @@
+# Written by via pack accept. Do not edit.
+
+[asset.block]
+bounds = [-0.5, -0.5, 0, 0.5, 0.5, 0.625]
+origin = [0, 0, 0]
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/kenney"
+tags = ["role:wall"]
+params = "f5836aee9d3ab51ef87ba9dd4c9503783b4d005ba2cee961ebc9e52cd0831b75"
+shared = "ce2403feb592cc85b89442434d5c9d01bd71c35cf014c4e7ef9a6b0a6599fdcd"
+files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "building-block.glb" = "50b49e9bba5ed1f9593b8e71d01bdd395950b53660f4bb713ceb59c181934602" }
+
+[asset.corner]
+bounds = [-0.5, -0.5, 0, 0.5, 0.5, 0.625]
+origin = [0, 0, 0]
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+triangles = 16
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/kenney"
+tags = ["role:corner"]
+shared = "ce2403feb592cc85b89442434d5c9d01bd71c35cf014c4e7ef9a6b0a6599fdcd"
+files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "building-corner.glb" = "71edfc9e50502ef613eaa4f71c6ecd8284eab6510ce10daabeb55d421771d93f" }
+
+[asset.door]
+bounds = [-0.5, -0.5, 0, 0.5, 0.5, 0.625]
+origin = [0, 0, 0]
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+triangles = 28
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/kenney"
+tags = ["role:door"]
+params = "f5836aee9d3ab51ef87ba9dd4c9503783b4d005ba2cee961ebc9e52cd0831b75"
+shared = "ce2403feb592cc85b89442434d5c9d01bd71c35cf014c4e7ef9a6b0a6599fdcd"
+files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "building-door.glb" = "cb0d232d9ff11d56f1d4b9b5900c4200ebedd643fda62afaa1ab5b188371bc04" }
+
+[asset.hip]
+bounds = [-0.569, -0.569, 0, 0.57, 0.57, 0.782]
+origin = [0.07, -0.069, 0.057]
+footprint = [[-0.569, -0.569], [0.57, -0.569], [0.57, 0.57], [-0.569, 0.57]]
+triangles = 32
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/kenney"
+tags = ["role:roof_hip"]
+params = "8084eb107a47fe000de6e3d7511c57f6429f45c080d7fb592d4f3eff24649745"
+shared = "ce2403feb592cc85b89442434d5c9d01bd71c35cf014c4e7ef9a6b0a6599fdcd"
+files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "roof-slanted-corner-a.glb" = "ad85637d4dafcbacc9aab452059d373552742dd78e3ad31e9f98396b9be6b8c1" }
+
+[asset.parapet]
+bounds = [-0.5, -0.5, 0, 0.5, 0.5, 0.212]
+origin = [0, 0, 0]
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+triangles = 20
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/kenney"
+tags = ["role:wall", "storey:parapet"]
+params = "f5836aee9d3ab51ef87ba9dd4c9503783b4d005ba2cee961ebc9e52cd0831b75"
+shared = "ce2403feb592cc85b89442434d5c9d01bd71c35cf014c4e7ef9a6b0a6599fdcd"
+files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "roof-flat-border-side.glb" = "74793ee2c1638a0ced823c1fa10b6c0ab830d53daa2f55f9ffad33f81750413d" }
+
+[asset.parapet_corner]
+bounds = [-0.5, -0.5, 0, 0.5, 0.5, 0.212]
+origin = [0, 0, 0]
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+triangles = 24
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/kenney"
+tags = ["role:corner", "storey:parapet"]
+shared = "ce2403feb592cc85b89442434d5c9d01bd71c35cf014c4e7ef9a6b0a6599fdcd"
+files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "roof-flat-border-corner.glb" = "9b451615268d7e4a2f58553ad8df056e51d6fcd0a844a27379c03330a948f275" }
+
+[asset.slope]
+bounds = [-0.5, -0.569, 0, 0.5, 0.57, 0.782]
+origin = [0, -0.069, 0.057]
+footprint = [[-0.5, -0.569], [0.5, -0.569], [0.5, 0.57], [-0.5, 0.57]]
+triangles = 28
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/kenney"
+tags = ["role:roof_slope"]
+params = "e701519f4bac58a10a7a8b23675e6d34480eea901945d43c9e3ac4526e16346f"
+shared = "ce2403feb592cc85b89442434d5c9d01bd71c35cf014c4e7ef9a6b0a6599fdcd"
+files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "roof-slanted.glb" = "032cea72789e1288fd34d1cfd29fc1045493d9add5208e6ba9211b9ecbc0de7a" }
+
+[asset.tile]
+bounds = [-0.5, -0.5, 0, 0.5, 0.5, 0.106]
+origin = [0, 0, 0]
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/kenney"
+tags = ["role:floor"]
+params = "f5836aee9d3ab51ef87ba9dd4c9503783b4d005ba2cee961ebc9e52cd0831b75"
+shared = "ce2403feb592cc85b89442434d5c9d01bd71c35cf014c4e7ef9a6b0a6599fdcd"
+files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "roof-flat-center.glb" = "233055f29a18523881f5b6ca0a2a5b0c8ce6048ee7fc752c3da5c92d3cbded8b" }
+
+[asset.window]
+bounds = [-0.5, -0.5, 0, 0.5, 0.5, 0.625]
+origin = [0, 0, 0]
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+triangles = 28
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/kenney"
+tags = ["role:wall", "variant:window"]
+params = "f5836aee9d3ab51ef87ba9dd4c9503783b4d005ba2cee961ebc9e52cd0831b75"
+shared = "ce2403feb592cc85b89442434d5c9d01bd71c35cf014c4e7ef9a6b0a6599fdcd"
+files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "building-window.glb" = "69d883fc7974aa3b077cd1b3e0a048fedfe2e203940308c44b49e66b75c54009" }
+
+[asset.windows]
+bounds = [-0.5, -0.5, 0, 0.5, 0.5, 0.625]
+origin = [0, 0, 0]
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+triangles = 44
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/kenney"
+tags = ["role:wall", "variant:windows"]
+params = "f5836aee9d3ab51ef87ba9dd4c9503783b4d005ba2cee961ebc9e52cd0831b75"
+shared = "ce2403feb592cc85b89442434d5c9d01bd71c35cf014c4e7ef9a6b0a6599fdcd"
+files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "building-windows.glb" = "b0c3545cccfd5980905a333e86cdeab2a3f3f0550b746964d94fec76d3e028c7" }

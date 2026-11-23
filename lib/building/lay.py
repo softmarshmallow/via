@@ -65,8 +65,8 @@ The rules (ours, written for this library; README.md is the design note):
    be two pieces) is refused. Two rooms beside each other share an opening `inner_door` (0.9 m)
    wide at the middle of their cut: the wall pieces there leave it open (the walk crosses it).
 6. **Walls** (with `kit`, a taxon path of pieces tagged `role:wall`, `role:corner`,
-   `role:corner_in`, `role:filler`, `role:door`, `role:roof`, `role:floor`, `role:roof_slope`,
-   `role:roof_gable`): along every stretch of a storey's outline that lies on the footprint's
+   `role:corner_in`, `role:filler`, `role:door`, `role:roof`, `role:floor`, `role:roof_flat`,
+   `role:roof_slope`, `role:roof_gable`): along every stretch of a storey's outline that lies on the footprint's
    outline, less the corners and a clear gap for each doorway and flight that crosses it, one `run` of wall pieces at their pitch
    (`params.pitch`, else their `bounds` width) and one of fillers for what is left: the most wall
    pieces such that the rest is a whole number of fillers, the stretch no more than `FIT`
@@ -113,10 +113,21 @@ The rules (ours, written for this library; README.md is the design note):
    Before, the gap was the door's width to the pitch, and a piece wider than its pitch closed it
    (TODO, M5 slice 1: the station's front door 0.20 m clear, its tower step 0.29 m).
    A stretch beside a gap that does not close is shortened to the next length that does, so the
-   gap widens. What the wall then leaves, less what the gap needs (the path's width and the
+   gap widens; that length may be none, and a stretch shorter than any piece of the kit, between a
+   corner and a door, goes, the gap running to the corner's face (K10: Kenney's door block in the
+   bay beside a corner left 0.325 m open). Nothing longer than the kit's smallest piece goes this
+   way: such a stretch closes or is `wall_open`. What the wall then leaves, less what the gap needs (the path's width and the
    margin, or the kit's door piece, `role:door`, where that is wider), is open wall. More than the
    margin of it is `gap_wide` (warning), naming the door or flight and the metres left open: a
-   door may sit a margin loose in its wall, not a piece's length. The kit's door piece is its
+   door may sit a margin loose in its wall, not a piece's length. **Each side on its own.** The
+   kit's door piece stands on the door's own middle, and a gap widened on one side leaves it off
+   the opening's middle: where the wall left open on one side of the piece as it stands is more
+   than the margin, and the two sides differ, that is `gap_wide` too, with the metres open before
+   and after the piece, though the widths alone would pass (K10's review: a village door 1.24 m
+   along its side left 0.19 m open beside the door piece and said nothing; a sweep of door places
+   over six kits found 240 such places in the village kit and 264 in Kenney's even before K10).
+   The open wall is measured between what stands: the faces of the wall pieces, a corner's face
+   where a stretch went, and the door piece's box. The kit's door piece is its
    door size; a door asked wider than it is told so here.
 8. **Variants of the bay.** A kit may hold several `role:wall` pieces: the bay (the first with no
    `variant:` tag) and its variants, each tagged `variant:<word>` (a window bay, a vent, an arch).
@@ -186,9 +197,13 @@ The rules (ours, written for this library; README.md is the design note):
    is laid and `slab_open` says so once: tiles are instances on the millimetre lattice, and off
    the axes two that abut overlap by the rounding (rules.md 8.1).
 10. **Roofs from pieces.** Every roof piece stands at the eaves, on the `garden` of a `roof`
-   feature over the footprint (`<building>_roof`). `roof = "flat"`: the floor tiles, laid as rule
-   9 lays them over the whole footprint (`<building>_roof_f<i>_<j>`); the walls' tops stand round
-   them. `roof = "gable"`, on a rectangle: the ridge lies along the longer sides (the first of
+   feature over the footprint (`<building>_roof`). `roof = "flat"`: the kit's roof tile
+   (`role:roof_flat`), or its floor tile where it has none, laid as rule 9 lays a floor over the
+   whole footprint (`<building>_roof_f<i>_<j>`); the walls' tops stand round them. A roof tile is
+   its own role because a kit's roof is not its floor: Kenney's flat roof tile stands its
+   thickness proud of the wall's top, where its parapet's flat part is, and a floor tile is sunk
+   by its thickness; a kit made only of a building's outside has no floor at all (K10). A
+   terrace (rule 14) is tiled the same way. `roof = "gable"`, on a rectangle: the ridge lies along the longer sides (the first of
    equal ones). `role:roof_slope` is a wedge that climbs from its front edge to its back,
    `params.pitch` long along the eave and `params.span` deep in plan; the building's depth must be
    twice the span within `FIT`. One run of slopes stands along each long side
@@ -1585,7 +1600,6 @@ def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), marg
             pieces.append((at, min(g0, b), after_gap, True))
             at, after_gap = max(at, g1), True
         pieces.append((at, b, after_gap, False))
-        step_max = max(wall["pitch"], filler["pitch"] if filler else 0)
         ends = []                       # each piece's ends as laid, for the gaps between them
         for j, (p0, p1, gap0, gap1) in enumerate(pieces):
             L = p1 - p0
@@ -1593,9 +1607,14 @@ def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), marg
             if L <= FIT:
                 continue
             got, near = fit(L, wall["pitch"], filler["pitch"] if filler else 0)
-            if got is None and (gap0 or gap1) and near[0] and L - near[0] <= step_max:
+            if got is None and (gap0 or gap1) and near[0] is not None:
                 # A stretch beside a gap is shortened to the next length that closes, from its
-                # gap's side: the gap only widens, so the clear width only grows (rule 6).
+                # gap's side: the gap only widens, so the clear width only grows (rule 6). That
+                # length may be none: a stretch shorter than any piece, between a corner and a
+                # door, goes, and the gap runs to the corner (K10: a door block in a corner's bay).
+                # The cut is always less than the shortest piece: two lengths that close are never
+                # further apart than that, so no bound is written (K10's review found the old
+                # bound, `L - near[0] <= step_max`, could not fail: two mutations of it survived).
                 cut = L - near[0]
                 if gap0 and gap1:
                     p0, p1 = p0 + cut / 2, p1 - cut / 2
@@ -1650,18 +1669,36 @@ def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), marg
         # What each gap was left, against what stands in it (rule 6, "the clear gap").
         door_w = kit["door"].get("width", kit["door"]["pitch"]) if kit.get("door") else None
         for j, (g0, g1, label, w) in enumerate(st["gaps"]):
-            left = ends[j + 1][0] - ends[j][1] - 2 * over
+            # The faces either side: a wall piece's overhang reaches past its stretch's end; a
+            # stretch that went (shorter than any piece) leaves the corner's own face.
+            f0 = ends[j][1] + (over if ends[j][1] - ends[j][0] > FIT else 0)
+            f1 = ends[j + 1][0] - (over if ends[j + 1][1] - ends[j + 1][0] > FIT else 0)
+            left = f1 - f0
             need = g1 - g0 - 2 * over
             if label and label[0] == "door" and door_w:
                 need = max(need, door_w)
-            if left - need > margin + FIT:
+            # Where the kit's door piece stands (on the door's own middle, as laid below): the
+            # open wall either side of it, each side on its own, so a piece that stands off the
+            # opening's middle leaves no hole unsaid (K10's review: a stretch that went beside a
+            # door widened the opening on one side only).
+            beside = None
+            if label and label[0] == "door" and kit.get("door") and kit["door"].get("box"):
+                bx = kit["door"]["box"]
+                for d in doors:
+                    c_ = d["s"] - st["off"]
+                    if d["edge"] == st["side"] and g0 - FIT <= c_ <= g1 + FIT:
+                        ha, hb = (c_ - bx[3]) - f0, f1 - (c_ - bx[0])    # asset +x runs against the side
+                        if abs(ha - hb) > FIT and max(ha, hb) > margin + FIT:
+                            beside = (max(ha, 0), max(hb, 0))
+                        break
+            if left - need > margin + FIT or beside:
                 lo = st["gaps"][j - 1][1] if j else a
                 hi = st["gaps"][j + 1][0] if j + 1 < len(st["gaps"]) else b
                 places = gap_places(lo, hi, need + 2 * over, wall["pitch"], filler["pitch"] if filler else 0,
                                     (g0 + g1) / 2)
                 notes.append({"code": "gap_wide", "label": label, "left": left, "need": need, "path": w,
                               "side": st["side"], "places": places, "others": len(st["gaps"]) > 1,
-                              "at": rnd(local(e, (ends[j][1] + ends[j + 1][0]) / 2, 0))})
+                              "beside": beside, "at": rnd(local(e, (f0 + f1) / 2, 0))})
     for c_ in corners:
         piece, r = corner_of(kit, c_["convex"], T)
         if piece is None:
@@ -2807,7 +2844,7 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
             strip = [a_, b_, b2, a2]
             e_in = edges(strip)[0]["n"]          # into the building, across the terrace
             out["terraces"].append({"key": key, "region": strip, "eaves": lv[k]})
-            tile = (kit_of[k - 1] or {}).get("floor")
+            tile = (kit_of[k - 1] or {}).get("roof_flat") or (kit_of[k - 1] or {}).get("floor")
             if tile:
                 # Tiles lie inside the parapet on three sides and run to the wall above on the
                 # fourth: the ring `slab_plan` insets is the strip grown by `T` under that wall.
@@ -2850,7 +2887,7 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
         out["roof"] = {"key": f"{prefix}_roof", "region": crown, "eaves": eaves}
     elif roof in ("flat", "gable", "hip"):        # roofs from pieces (rules 10 and 17)
         rkey, kt = f"{prefix}_roof", kit_of[top] or {}
-        tile, why, laid = kt.get("floor"), None, False
+        tile, why, laid = kt.get("roof_flat") or kt.get("floor"), None, False   # a roof tile of its own first (rule 10)
         region = crown
         if not kt.get("wall"):
             why = "the building has no `kit`"
@@ -2885,7 +2922,7 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                     out["notes"].append({"code": "slab_open", "storey": -1, "cells": short, "at": first,
                                          "tile": tile["pitch"]})
             elif roof == "flat":
-                why = "the kit has no `role:floor` piece"
+                why = "the kit has no `role:roof_flat` or `role:floor` piece"
         if laid:
             out["roof"] = {"key": rkey, "region": region, "eaves": eaves}
         if laid and roof == "flat" and kits:
@@ -3165,13 +3202,20 @@ def generate(step):
                 else "no place on this side closes round it with the side's other openings where they are: "
                 "move them together, or resize the side" if g.get("others")
                 else "no place on this side closes round it: make it the kit's door size, or resize the side")
-        step.warning("gap_wide", name,
-                     f"the wall leaves {g['left'] / 1000:g} m at {what}, which needs {g['need'] / 1000:g} m: "
-                     f"{over:g} m stands open", hint,
+        bes = g.get("beside")
+        if bes:
+            over = round((bes[0] + bes[1]) / 1000, 3)
+            said = (f"the wall leaves {g['left'] / 1000:g} m at {what}, and the door piece stands off its middle: "
+                    f"{bes[0] / 1000:g} m stands open before it and {bes[1] / 1000:g} m after it")
+        else:
+            said = (f"the wall leaves {g['left'] / 1000:g} m at {what}, which needs {g['need'] / 1000:g} m: "
+                    f"{over:g} m stands open")
+        step.warning("gap_wide", name, said, hint,
                      position=(g["at"][0] / 1000, g["at"][1] / 1000),
                      data={"left": round(g["left"] / 1000, 3), "need": round(g["need"] / 1000, 3),
                            "open": round(over, 3), "path": round(g["path"] / 1000, 3),
-                           "side": g.get("side"), "closes_at": places},
+                           "side": g.get("side"), "closes_at": places,
+                           **({"before": round(bes[0] / 1000, 3), "after": round(bes[1] / 1000, 3)} if bes else {})},
                      **({"explain": EXPLAIN["gap_wide"]} if i == 0 else {}))
     for i, n in enumerate(n for n in out["notes"] if n["code"] == "slab_open"):
         what = "the flat roof" if n["storey"] < 0 else f"storey {n['storey']}"

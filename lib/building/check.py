@@ -105,6 +105,10 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
    was read first. A kit that states nothing is `kit_unstated` (info), once, with what was worked
    out of its bay and the line that would state it. A piece tagged `storey:colonnade` is held to
    the storey by its top, not by its box's height: a lintel's box starts above the floor.
+   Under stated `eaves` a slope's span, less the eaves, is half a depth a building of the kit can
+   have: whole pieces and two corners, or whole bays and one post. The pieces may be none only in
+   a kit of blocks, whose corner reaches as far as its bay is long (a building as deep as its two
+   corners, as Kenney's hipped houses are two blocks deep: K10).
 11. **Every size from one unit.** A kit that states `shared.unit` takes every length from it,
    and `kit_unit` (warning) names what does not: a piece's `params.pitch`, `reach` or `span`;
    the measured length and thickness of a piece with a role of `wall`, `filler`, `door`,
@@ -835,12 +839,19 @@ def judge(features, meetings, kit_rows, p, pieces=()):
                 reach_ = reach_ if reach_ is not None else (wall_ or thick_(plain[0]))
                 step_, ends_ = (pitch_(filler_) if filler_ else pitch_(plain[0])), 2 * reach_
                 sized = f"whole pieces of {step_:g} m and two corners of {reach_:g} m"
+            # Between two corners a side may hold no piece at all only in a kit of blocks, whose
+            # corner reaches as far as its bay is long (Kenney's hipped roof is made for a building
+            # two blocks deep: K10). A kit of panels holds at least one piece there, and a kit of
+            # posts one bay (K10's review: a panel kit's slope that roofs a building as deep as its
+            # two corners passed).
+            blocks_ = post_ is None and abs(reach_ - pitch_(plain[0])) <= slack
+            least_ = 0.0 if blocks_ else step_
             for r in rows:
                 span = number((r.get("params") or {}).get("span"))
                 if "role:roof_slope" not in (r.get("tags") or []) or not span:
                     continue
                 deep = 2 * span - 2 * eaves_
-                if deep - ends_ < step_ - slack or off(deep - ends_, step_) > slack:
+                if deep - ends_ < least_ - slack or off(deep - ends_, step_) > slack:
                     out.append(("warning", "kit_stated", r["id"], f"`{r['id']}` has a span of {span:g} m, which under "
                                 f"the stated eaves of {eaves_:g} m roofs a building {deep:g} m deep: no building of the "
                                 f"kit is that deep ({sized})",

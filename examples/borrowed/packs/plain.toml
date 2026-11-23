@@ -1,0 +1,72 @@
+# Kenney's Modular Buildings 2.1 (CC0, www.kenney.nl), as a studio would hand it over: each piece's
+# role and the length it repeats at, and what the pieces share, read off the files and nothing
+# fitted. The models are fetched by ../fetch.py into packs/kenney/ and never committed.
+# This is the BEFORE pack of examples/borrowed (README.md, "Before").
+
+root = "kenney"
+
+[taxon."structure"]
+defaults = { collision = "box" }
+
+[taxon."structure/kenney".defaults.shared]
+module = 1.0                     # every building block is 1 by 1 in plan
+wall   = 1.0                     # a block is the wall: a building is blocks round its outline
+storey = 0.625                   # every building block's height
+
+[asset.block]
+file   = "building-block.glb"
+taxon  = "structure/kenney"
+tags   = ["role:wall"]
+params = { pitch = 1.0 }
+
+[asset.window]
+file   = "building-window.glb"
+taxon  = "structure/kenney"
+tags   = ["role:wall", "variant:window"]
+params = { pitch = 1.0 }
+
+[asset.windows]
+file   = "building-windows.glb"
+taxon  = "structure/kenney"
+tags   = ["role:wall", "variant:windows"]
+params = { pitch = 1.0 }
+
+[asset.corner]
+file  = "building-corner.glb"
+taxon = "structure/kenney"
+tags  = ["role:corner"]
+
+[asset.door]
+file   = "building-door.glb"
+taxon  = "structure/kenney"
+tags   = ["role:door"]
+params = { pitch = 1.0 }
+
+[asset.tile]
+file   = "roof-flat-center.glb"
+taxon  = "structure/kenney"
+tags   = ["role:floor"]
+params = { pitch = 1.0 }
+
+[asset.slope]
+file   = "roof-slanted.glb"
+taxon  = "structure/kenney"
+tags   = ["role:roof_slope"]
+params = { pitch = 1.0, span = 1.0 }
+
+[asset.hip]
+file   = "roof-slanted-corner-a.glb"
+taxon  = "structure/kenney"
+tags   = ["role:roof_hip"]
+params = { span = 1.0 }
+
+[asset.parapet]
+file   = "roof-flat-border-side.glb"
+taxon  = "structure/kenney"
+tags   = ["role:wall", "storey:parapet"]
+params = { pitch = 1.0 }
+
+[asset.parapet_corner]
+file  = "roof-flat-border-corner.glb"
+taxon = "structure/kenney"
+tags  = ["role:corner", "storey:parapet"]

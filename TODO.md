@@ -1075,6 +1075,24 @@ open, and its place here is its destination.
 
 ### `spec/assets.md`
 
+- [ ] A piece's plan is its measured box; nothing reads its shape. Kenney's corner block and hip
+      are bevelled, so a corner turned the wrong way (`front`) and a roof left open over each
+      bevel are the same box, and neither `lay` nor `check` can tell: only `examples/borrowed`'s
+      measure does, from the triangles (55 dm2 of the cottage's roof open inside its outline,
+      81 in its eaves, all over the bevels). A measured plan from the geometry (an outline of the
+      model's triangles in plan, a facts-file fact like `bounds`) would let `check` hold a turn
+      and a library say an open corner. (From K10's review, 2026-11-24; the closing review's
+      `docs/design/kit-review.md`, section 6, item 5.)
+- [ ] **A model at another scale** (K10, `examples/borrowed`). Kenney's Modular Buildings is in
+      its own units: a building block 1 by 1 by 0.625, a doorway 0.25 by 0.5, about a quarter of a
+      person's size. The contract takes model units as metres and leaves another scale open
+      (2.3: "between a declared factor on the asset and a fit to a declared height"), so the
+      example is a town a quarter of a person's size, and every person's measure says so (four
+      `door_narrow`: a block stands over each doorway within a walker's head). Proposed: a factor
+      in the pack (a taxon's `defaults` or the asset), applied where the model is measured, so
+      bounds, origin, mounts and `sink` are the scaled ones and no library reads an unscaled
+      number; an instance's own `scale` multiplies it. lib/building would then need nothing.
+
 - [ ] **A kit is not a unit a second world can name.** A world has one pack (`pack` takes a
       string: a list is `doc.type`), and two kits' packs joined are `doc.syntax` (a taxon
       table twice) and then seven ids bound twice (`base`, `base_corner`, `door`, `post`,
@@ -1494,6 +1512,18 @@ open, and its place here is its destination.
       (From the list before the rewrite, Surface and delivery; was -> by item below.)
 
 ### `lib/building`
+
+- [ ] **What someone else's kit left** (K10, `examples/borrowed`, lib/building/README.md "Someone
+      else's kit"). Kenney's corners with windows (nine corner blocks) have no place: a corner
+      has no variants (rule 8). Eight window blocks stand 0.025 to 0.075 m proud of the block's
+      face (sills, awnings, a balcony) and rule 8 refuses each as a variant, as K3 decided; a
+      sill as a piece of its own, placed on a bay, would take them. Kenney's gable is a whole
+      ridge for a building one block deep, not our two slopes and gable halves. Not built: a hip
+      over an L (Kenney's inner corner), steps to a door (four step blocks), and a leaf that sits
+      in a block's hole (six doors, 22 windows). A building that `row.py` returns partly outside
+      the extent is `protocol.raised` from `lay`'s ground read, with a traceback, where a
+      `params` naming the row and the extent is owed (found when the example's row first ran
+      past x = 32 m).
 
 - [ ] **What the realm left** (K11, `examples/realm`). Not built: a plot that keeps trees off (it
       has no `keep_out`: a pad's would warn of every piece of a kit); one plot for buildings that
@@ -2013,6 +2043,11 @@ open, and its place here is its destination.
 
 ### `examples/market`
 
+- [ ] Challenge 33 (K10): a real kit has now been laid by lib/building (`examples/borrowed`,
+      Kenney's Modular Buildings), but not by lib/town's kit run, which `market` uses. Kenney's
+      seven sample houses are whole buildings, the shape lib/town's pieces have: owed, a market
+      street of them, once a model at another scale has a factor (`spec/assets.md`).
+
 - [ ] examples/market: the rows stand on the ground as it lies (no terrace): 85 of 189 doors within
   0.3 m of the footway, 0 more than 1 m off. A kit run that returns a terrace per stretch (as
   houses.py does) is owed; then `max_relief` back to 0.6.
@@ -2122,6 +2157,11 @@ open, and its place here is its destination.
 
 ### `engines/godot`
 
+- [ ] A kind surface with no material is drawn dark grey: a storey's floor, whose region is the
+      outline, square at a corner, shows as a dark triangle through Kenney's bevelled corner
+      blocks at every storey of `examples/borrowed` (`docs/reports/borrowed-sheet.png`). Draw a
+      kind surface without a material as its ground's paint, or not at all where a piece stands
+      over it. (From K10's review, 2026-11-24.)
 - [ ] A joint is a row of `meets.json` (surfaces.md 3.3, R76), and the loader makes a
   `NavigationLink3D` of every row (build.md 15): two pipe pieces joined 5 m up get a link no
   walker should take. The loader cannot tell a walk from a pipe: only the connector's word

@@ -1,0 +1,4 @@
+# A door on the cottage. Two blocks deep, it is all wall: the hipped roof is made for that depth
+# (two blocks), and the walls are a block thick, so there is no inside for a doorway to reach.
+[feature.cottage]
+doors = [{ storey = 0, side = 0, at = 2.5 }]

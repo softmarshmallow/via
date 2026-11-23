@@ -1,0 +1,456 @@
+# What a borrowed-kit build measures (docs/plan-kits.md, K10; examples/borrowed/README.md).
+# Measures, never bytes (R15): each row names a measure of `measure.py` and the band it must
+# fall in, or the value it must equal. Taken by
+#
+#   python3 examples/borrowed/measure.py BUILD --world world.toml                     # base
+#   python3 examples/borrowed/measure.py BUILD+<c> --base BUILD --world world.toml --change changes/<c>.toml
+#   python3.11 examples/borrowed/measure.py ... --check <section>
+#
+# Protocol of the numbers below: macOS arm64, release `via` built from the tree at 9b8c2c8 (no
+# engine change since), VIA_LIB=lib, Python 3.12 (sdk/python/.venv) for the steps, lib/building's
+# `row`, `lay` and `check` of the working tree with K10's mends (a flat roof's own tile; a
+# stretch shorter than any piece beside a gap goes, and the wall either side of a door piece is
+# judged as it stands; a building of blocks as deep as its two corners) and K10's review's fix
+# pass (roofs and corners measured from the models' triangles, not their boxes).
+# Kenney's Modular Buildings 2.1, fetched by fetch.py (SHA-256 47e16146...), and the window
+# block re-exported by packs/make_revised.py. One fresh store: the base, then each change with
+# --against the base, one build each, then the base again on that store (`warm`). Recorded from
+# one run and checked against a second, 2026-11-24. A band is the measured number: not a target,
+# it says where someone looks.
+
+# ------------------------------------------------------------------------------------------ base
+# The base: three buildings and a row from Kenney's blocks, every wall closed, every flat roof
+# covered once. The cottage's hipped roof is open over the bevel of each of its four corners, as
+# Kenney made the hip and the corner block (55 dm2 inside the outline, 81 in the eaves, read from
+# the models' triangles: README.md, "The bevels"); every building corner is cut on its outer side
+# and no parapet corner is cut, which a corner or a hip turned the wrong way changes. The four
+# `door_narrow` are the kit's size, not a fault of the fit: a doorway 0.5 m high under a block
+# (README.md, "Scale"). The cottage has no door: two blocks deep, it has no inside (`unreached`).
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.warnings]
+measure = "warnings"
+band    = [5, 5]
+
+[base.instances]
+measure = "instances"
+band    = [178, 178]
+
+[base.blocks]
+measure = "blocks"
+band    = [84, 84]
+
+[base.doors]
+measure = "doors"
+band    = [4, 4]
+
+[base.corners]
+measure = "corners"
+band    = [24, 24]
+
+[base.roof_pieces]
+measure = "roof_pieces"
+band    = [10, 10]
+
+[base.roof_tiles]
+measure = "roof_tiles"
+band    = [26, 26]
+
+[base.parapet]
+measure = "parapet"
+band    = [58, 58]
+
+[base.walls_open_m]
+measure = "walls_open_m"
+band    = [0, 0]
+
+[base.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [55, 55]
+
+[base.roof_eaves_open_dm2]
+measure = "roof_eaves_open_dm2"
+band    = [81, 81]
+
+[base.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[base.corners_cut_out]
+measure = "corners_cut_out"
+band    = [24, 24]
+
+[base.corners_cut_in]
+measure = "corners_cut_in"
+band    = [0, 0]
+
+[base.corners_whole]
+measure = "corners_whole"
+band    = [16, 16]
+
+[base.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[base.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[base.door_narrow]
+measure = "door_narrow"
+band    = [4, 4]
+
+[base.unreached]
+measure = "unreached"
+band    = [1, 1]
+
+[base.written_tables]
+measure = "written_tables"
+band    = [17, 17]
+
+[base.written_numbers]
+measure = "written_numbers"
+band    = [67, 67]
+
+[base.laid_features]
+measure = "laid_features"
+band    = [21, 21]
+
+[base.laid]
+measure = "laid"
+band    = [199, 199]
+
+# ------------------------------------------------------------------------------------------ warm
+# The base again on its store: the same measures, nothing moved.
+
+[warm.errors]
+measure = "errors"
+band    = [0, 0]
+
+[warm.warnings]
+measure = "warnings"
+band    = [5, 5]
+
+[warm.instances]
+measure = "instances"
+band    = [178, 178]
+
+[warm.walls_open_m]
+measure = "walls_open_m"
+band    = [0, 0]
+
+[warm.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [55, 55]
+
+[warm.roof_eaves_open_dm2]
+measure = "roof_eaves_open_dm2"
+band    = [81, 81]
+
+[warm.corners_cut_out]
+measure = "corners_cut_out"
+band    = [24, 24]
+
+[warm.added]
+measure = "added"
+band    = [0, 0]
+
+[warm.removed]
+measure = "removed"
+band    = [0, 0]
+
+[warm.moved]
+measure = "moved"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ handed_over
+# BEFORE: the kit as handed over (packs/plain.toml). The pack binds no ground and the build stops;
+# what it said first is the fit: the hip and the slope stated at the span their block has and not
+# their box (`kit_deck`), so the hip and the slopes stand in each other (`place.crowded`); the
+# doorway the library's 1 m and no whole blocks beside it (`gap_wide`, 1.9 m open); the wide window,
+# which the plain pack does not name.
+
+[handed_over.errors]
+measure = "errors"
+band    = [1, 1]
+
+[handed_over.unknown_material]
+measure = "unknown_material"
+band    = [1, 1]
+
+[handed_over.kit_deck]
+measure = "kit_deck"
+band    = [2, 2]
+
+[handed_over.crowded]
+measure = "crowded"
+band    = [10, 10]
+
+[handed_over.gap_wide]
+measure = "gap_wide"
+band    = [2, 2]
+
+[handed_over.gap_left_mm]
+measure = "gap_left_mm"
+band    = [3000, 3000]
+
+[handed_over.gap_need_mm]
+measure = "gap_need_mm"
+band    = [1100, 1100]
+
+[handed_over.slab_open]
+measure = "slab_open"
+band    = [1, 1]
+
+[handed_over.variant_none]
+measure = "variant_none"
+band    = [1, 1]
+
+[handed_over.instances]
+measure = "instances"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ three_storeys
+# The house a storey taller: the stair's second flight and a storey of blocks, closed; the flat roof
+# up a storey.
+
+[three_storeys.errors]
+measure = "errors"
+band    = [0, 0]
+
+[three_storeys.warnings]
+measure = "warnings"
+band    = [5, 5]
+
+[three_storeys.instances]
+measure = "instances"
+band    = [194, 194]
+
+[three_storeys.blocks]
+measure = "blocks"
+band    = [100, 100]
+
+[three_storeys.corners]
+measure = "corners"
+band    = [28, 28]
+
+[three_storeys.walls_open_m]
+measure = "walls_open_m"
+band    = [0, 0]
+
+[three_storeys.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [55, 55]
+
+[three_storeys.added]
+measure = "added"
+band    = [16, 16]
+
+[three_storeys.moved]
+measure = "moved"
+band    = [24, 24]
+
+# ------------------------------------------------------------------------------------------ wide
+# The house half a block wider: 6.5 m is no whole number of blocks between its corners, and the kit
+# has no half block.
+
+[wide.errors]
+measure = "errors"
+band    = [0, 0]
+
+[wide.wall_open]
+measure = "wall_open"
+band    = [5, 5]
+
+[wide.walls_open]
+measure = "walls_open"
+band    = [4, 4]
+
+[wide.walls_open_m]
+measure = "walls_open_m"
+band    = [14.0, 14.0]
+
+[wide.gap_wide]
+measure = "gap_wide"
+band    = [1, 1]
+
+[wide.slab_open]
+measure = "slab_open"
+band    = [1, 1]
+
+[wide.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [1055, 1055]
+
+[wide.blocks]
+measure = "blocks"
+band    = [72, 72]
+
+[wide.removed]
+measure = "removed"
+band    = [20, 20]
+
+# ------------------------------------------------------------------------------------------ door_off
+# The door half a block over: each stretch beside it is shortened to whole blocks, and the wall
+# leaves 2 m for a door block of 1 m (`gap_wide`).
+
+[door_off.errors]
+measure = "errors"
+band    = [0, 0]
+
+[door_off.gap_wide]
+measure = "gap_wide"
+band    = [1, 1]
+
+[door_off.gap_left_mm]
+measure = "gap_left_mm"
+band    = [2000, 2000]
+
+[door_off.gap_need_mm]
+measure = "gap_need_mm"
+band    = [1000, 1000]
+
+[door_off.walls_open]
+measure = "walls_open"
+band    = [2, 2]
+
+[door_off.walls_open_m]
+measure = "walls_open_m"
+band    = [1.0, 1.0]
+
+[door_off.doors]
+measure = "doors"
+band    = [4, 4]
+
+[door_off.removed]
+measure = "removed"
+band    = [1, 1]
+
+[door_off.moved]
+measure = "moved"
+band    = [2, 2]
+
+# ------------------------------------------------------------------------------------------ solid
+# A door on the cottage, which is all wall: the doorway's end lies in the back wall's blocks
+# (`door_narrow` of the cottage, the fifth). The cottage is reached: a walk is reckoned from
+# surfaces, not from what stands on them.
+
+[solid.errors]
+measure = "errors"
+band    = [0, 0]
+
+[solid.door_narrow]
+measure = "door_narrow"
+band    = [5, 5]
+
+[solid.unreached]
+measure = "unreached"
+band    = [0, 0]
+
+[solid.doors]
+measure = "doors"
+band    = [5, 5]
+
+[solid.added]
+measure = "added"
+band    = [2, 2]
+
+[solid.removed]
+measure = "removed"
+band    = [2, 2]
+
+# ------------------------------------------------------------------------------------------ deep_hip
+# The cottage three blocks deep: the slanted roof is made for two (`roof_none`, naming 3.278 m
+# against 2.278 m), and the flat roof is laid in its place inside the walls, so the eaves and the
+# wall tops are not roofed by pieces.
+
+[deep_hip.errors]
+measure = "errors"
+band    = [0, 0]
+
+[deep_hip.roof_none]
+measure = "roof_none"
+band    = [1, 1]
+
+[deep_hip.roof_none_deep_mm]
+measure = "roof_none_deep_mm"
+band    = [3278, 3278]
+
+[deep_hip.roof_pieces]
+measure = "roof_pieces"
+band    = [0, 0]
+
+[deep_hip.roof_tiles]
+measure = "roof_tiles"
+band    = [29, 29]
+
+[deep_hip.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [1200, 1200]
+
+[deep_hip.added]
+measure = "added"
+band    = [5, 5]
+
+[deep_hip.removed]
+measure = "removed"
+band    = [10, 10]
+
+# ------------------------------------------------------------------------------------------ sill
+# The window with a sill asked for: 0.05 m proud of the block's face, it is not the bay's size (rule
+# 8), and the bay stands in its place.
+
+[sill.errors]
+measure = "errors"
+band    = [0, 0]
+
+[sill.variant_none]
+measure = "variant_none"
+band    = [1, 1]
+
+[sill.kit_variant]
+measure = "kit_variant"
+band    = [1, 1]
+
+[sill.kit_stated]
+measure = "kit_stated"
+band    = [1, 1]
+
+[sill.instances]
+measure = "instances"
+band    = [178, 178]
+
+[sill.moved]
+measure = "moved"
+band    = [6, 6]
+
+# ------------------------------------------------------------------------------------------ revised
+# The window block re-exported 1.1 times as long: refused as a variant wherever asked, the bay in
+# its place, and `check` says why of the kit.
+
+[revised.errors]
+measure = "errors"
+band    = [0, 0]
+
+[revised.variant_none]
+measure = "variant_none"
+band    = [2, 2]
+
+[revised.kit_variant]
+measure = "kit_variant"
+band    = [1, 1]
+
+[revised.kit_pitch]
+measure = "kit_pitch"
+band    = [1, 1]
+
+[revised.instances]
+measure = "instances"
+band    = [178, 178]
+
+[revised.moved]
+measure = "moved"
+band    = [25, 25]

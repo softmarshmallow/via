@@ -1,0 +1,112 @@
+name       = "borrowed"
+extent     = [0, 0, 40, 32]                   # metres: x east, y north
+resolution = 0.5
+seed       = 7
+include    = ["building", "review"]
+pack       = "packs/kenney.toml"              # Kenney's Modular Buildings, fetched by fetch.py
+
+# Someone else's kit (docs/plan-kits.md, K10): Kenney's Modular Buildings 2.1, CC0, laid by
+# lib/building's `lay` from a pack that states what is true of its files (packs/kenney.toml).
+# Every length is the kit's own: a block is 1 by 1 in plan and 0.625 high, so these buildings are
+# a quarter of a person's size (README.md, "Scale"). A side holds whole blocks: its length less
+# the corner block at each end. A door stands on a block's middle: the door block is a bay.
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                                # level ground: the kit, not the land, is the subject
+role = "surface"
+base = "= 10"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.ground]
+paint = "ground"
+
+# ------------------------------------------------------------------------------------------ buildings
+
+# A house of two storeys, six blocks by four, a door on the south side, a flat roof with its
+# border. The stair is the author's: the kit has none (README.md).
+[feature.house]
+kind     = "building"
+region   = [[10, 10], [16, 10], [16, 14], [10, 14]]   # counter-clockwise from the south-west
+storeys  = 2
+storey_h = 0.625                                       # the kit's block
+plinth   = 0                                           # the blocks stand on the ground
+doors    = [{ storey = 0, side = 0, at = 2.5 }]        # the middle of the second block
+stair    = { side = 2, at = 2.0, width = 0.4, run = 2.0 }
+roof     = "flat"
+kit      = "structure/kenney"
+fill     = [{ storeys = [1], sides = "all", pattern = ["window", "windows"] }]
+
+# A cottage of one storey, five blocks by two, under a hipped roof: the kit's slanted roof is made
+# for a building two blocks deep, and with walls a block thick that has no inside, so no door.
+[feature.cottage]
+kind     = "building"
+region   = [[10, 20], [15, 20], [15, 22], [10, 22]]
+storey_h = 0.625
+plinth   = 0
+roof     = "hip"
+kit      = "structure/kenney"
+fill     = [{ sides = [1, 2, 3], pattern = ["wide"] }]
+
+# A row of three houses, two blocks deep inside their walls, flat roofs.
+[feature.street]
+kind     = "row"
+at       = [20, 10]
+to       = [35, 10]
+kit      = "structure/kenney"
+depth    = 2
+lots     = [{ bays = 3 }, { bays = 3 }, { bays = 3 }]
+storey_h = 0.625
+plinth   = 0
+roof     = "flat"
+fill     = [{ faces = ["front", "back", "end"], pattern = ["window"] }]
+
+# ------------------------------------------------------------------------------------------ steps
+
+[step.rows]                                   # every row's buildings (lib/building/row.py)
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:building/row.py"]
+
+[layer.walls]                                 # lay and check, a layer above the rows
+file  = "walls.toml"
+owner = "walls"
+rank  = 1
+
+# ------------------------------------------------------------------------------------------ views
+
+[feature.look_town]
+at = [17, 16]
+
+[feature.over]
+kind       = "bookmark"
+at         = [6, 3]
+toward     = "look_town"
+eye_height = 7
+
+[feature.front]
+kind       = "bookmark"
+at         = [13, 6]
+toward     = "look_town"
+eye_height = 1.2
+
+[feature.look_corner]
+at = [11, 11]
+
+[feature.corner]                              # the house's south-west corner, close
+kind       = "bookmark"
+at         = [7.5, 7.5]
+toward     = "look_corner"
+eye_height = 1.6
+
+[feature.look_cottage]
+at = [12.5, 21]
+
+[feature.cottage_view]                        # the hipped cottage from the south-west
+kind       = "bookmark"
+at         = [8, 17]
+toward     = "look_cottage"
+eye_height = 1.8

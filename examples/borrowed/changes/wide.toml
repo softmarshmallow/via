@@ -1,0 +1,4 @@
+# The house half a block wider: 6.5 blocks is no whole number of blocks between its corners, and
+# the kit has no half block.
+[feature.house]
+region = [[10, 10], [16.5, 10], [16.5, 14], [10, 14]]
