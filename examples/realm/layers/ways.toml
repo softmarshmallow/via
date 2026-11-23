@@ -1,0 +1,66 @@
+# The ways layer: what joins the places (layers/places.toml), in a layer above them.
+
+[feature.street]                              # between the rows: a carriageway and two footways (lib/town)
+kind = "street"
+path = [[330, 232], [398, 232]]
+
+# ------------------------------------------------------------------------------------------ the ways
+
+[feature.rindle_ford]                         # where the road crosses the beck
+kind = "ford"
+on   = { of = "uplands", class = "feature", near = [440, 240], t = 0.565 }
+
+[feature.east_road]                           # from the village to the ford
+kind      = "road"
+starts_at = "street.end"
+ends_at   = "rindle_ford"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 60 * (1 - smoothstep(6, 12, dist('kind:building', 14)))"
+smooth    = true
+
+[feature.senhal_road]                         # from the ford up to the court
+kind      = "road"
+starts_at = "rindle_ford"
+ends_at   = "senhal_gate"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 60 * (1 - smoothstep(6, 12, dist('kind:building', 14)))"
+smooth    = true
+
+[feature.fane_path]                           # from the village up to the temple
+kind      = "trail"
+starts_at = "street.start"
+ends_at   = "fane_foot"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 60 * (1 - smoothstep(6, 12, dist('kind:building', 14)))"
+smooth    = true
+
+
+# ------------------------------------------------------------------------------------------ the ground's paint
+# Declared here, not with the land: a field is declared in one layer, and its paint reads the ways.
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.rock]
+paint = "rock"
+mask  = "= smoothstep(27, 34, slope('height'))"
+
+[field.ground.then.shore]
+paint = "sand"
+mask  = "= 1 - smoothstep(0, 1.5, f('height') - sea)"
+
+[field.ground.then.track]                     # the roads and the trail worn to earth
+paint = "earth"
+mask  = "= max(1 - smoothstep(2.5, 3.3, dist('kind:road', 6)), 1 - smoothstep(1.1, 1.8, dist('kind:trail', 4)))"
+
+[field.ground.then.street]                    # the village street: gravel, kerb to kerb and the footways
+paint = "gravel"
+mask  = "= 1 - smoothstep(3.75, 4.25, dist('kind:street', 6))"
+
+[field.ground.then.bed]                       # the beck's bed and banks
+paint = "gravel"
+mask  = "= 1 - smoothstep(1.2, 2.4, dist('kind:beck', 6))"

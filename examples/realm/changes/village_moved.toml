@@ -1,0 +1,13 @@
+# Marrowick moved 40 m up the valley: its two rows and its street, ten numbers in three tables.
+# Nothing else is edited: the roads and the path are written by what they join (`street.end`,
+# `street.start`), and the map's name stands on the street.
+[feature.north_row]
+at = [340, 278]
+to = [388.6, 278]
+
+[feature.south_row]
+at = [386, 266]
+to = [347, 266]
+
+[feature.street]
+path = [[330, 272], [398, 272]]

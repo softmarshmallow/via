@@ -368,6 +368,28 @@ The rules (ours, written for this library; README.md is the design note):
    slab and standing under every hall in it (examples/court, "Before"). Source: ours; a walled
    compound with a gate is named in no developer's account read (docs/research/Modular kit
    failures in studios.md, section 12).
+19. **Level ground.** `ground = "level"`: the building also returns a `plot` (kinds.toml),
+   `<building>_plot`: its outline moved out `PLOT_APRON` (1.5 m) on every side, with `level`
+   the ground rule 2 read, so the land under the building and a walk round it is held at the
+   level its floor was reckoned from, and banks to the land outside no steeper than the plot's
+   `grade`. The wall's foot (rule 13) is then judged against that level, not against the land
+   as this step read it: the base reaches the ground where it is as deep as the plinth is
+   high. Levelling that would move the ground more than the plot's `max_cut` is the core's
+   `authority.max_change`, naming the plot: the land is too steep for this building as it is
+   written. The building's `max_cut` (3 m) and `grade` (0.3) are its plot's, passed on, so
+   that record is answered on the building: a larger `max_cut`, or gentler ground. A plot is
+   shaped with `order = 1`, so a way's bed in any layer gives way to it, and a doorway's sill,
+   ordered after it (kinds.toml), holds on it. What this step cannot see is what shapes the
+   ground after it: an anchored kind, a second plot over the same ground (another building's,
+   returned by this step in the same layer), or anything ordered after it. The wall's foot is
+   judged here against the level the plot states; `check` judges it again against the ground
+   as it ended (check.py rule 12, `plot_lost`). Any other
+   word is `params`. A `row` does not take it (its houses step with the land, rule 13); a
+   `court` takes it for the whole court (court.py rule 9), and its halls then read level
+   ground and need none of their own. Source: ours; in the studios' accounts flat ground is a
+   precondition a terrain team meets by hand (docs/research/Modular kit failures in
+   studios.md, section 4, "Meeting the ground"). Asked by examples/realm, the first kit
+   buildings on land that was not written for them.
 11. **What a kit states.** A kit is a taxon's pieces, and what they share it says once: the
    `shared` table in that taxon's `defaults` (spec/assets.md 2.5; R66 of docs/doctrine.md; Asset
    law 5 of docs/ledger/archetypes.md). `lay` reads these of its keys, each optional: `wall`, the
@@ -413,6 +435,7 @@ FIT = 5              # mm a stretch may be longer than its pieces' pitches and s
 FIT_SHORT = 1.5      # mm it may be shorter: what rounding its two corners to the millimetre can take off a side
 FOOT_STEP = 500      # mm between the points the ground is read at along an outline (rule 13)
 FOOT_SEEN = 0.05     # metres of wall foot above the ground that is said (rule 13)
+PLOT_APRON = 1500    # mm a building's plot reaches beyond its outline (rule 19)
 INNER_DOOR = 900     # mm, an opening between two rooms
 MIN_FLAT = 1500      # mm, the least flat ground beside a doorway
 MARGIN = 100         # mm a wall's gap is wider than the doorway or flight through it
@@ -2418,7 +2441,7 @@ def yard_plan(name, footprint, attrs, kit=None, kits=None, margin=MARGIN):
 
 
 def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, margin=MARGIN, kits=None, foot=None):
-    """Everything one building returns, as plain data (the step writes it): rules 1 to 18.
+    """Everything one building returns, as plain data (the step writes it): rules 1 to 19.
     `kit` is one kit for every storey (`kit_pieces`); `kits`, where given, is a function of a
     storey's word and its height in mm that gives that storey's kit, and `kit` is not read.
     `foot` is the ground along the outline, [(x mm, y mm, metres)] (`read_foot`): with it the
@@ -2426,8 +2449,17 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
     footprint = ccw(ring)
     prefix = key_of(name)
     storeys = _num(attrs, "storeys", 1, 0, integer=True)
+    level = attrs.get("ground") or ""
+    if level not in ("", "level"):
+        raise ParamError("ground", f"`ground` is {level!r}",
+                         'write `ground = "level"` for a plot levelled under the building, or leave it out')
     if storeys == 0:                         # a wall on the ground (rule 18)
+        if level:
+            raise ParamError("ground", "`ground` is written on a building of no storeys",
+                             "a wall stands on the ground as it lies: write `ground` on the court it is the yard of")
         return yard_plan(name, footprint, attrs, kit, kits, margin)
+    if level and foot:                       # the ground the plot will hold, all round (rule 19)
+        foot = [(x, y, ground_m) for x, y, _ in foot]
     storey_h = _num(attrs, "storey_h", 3.2, 0.5)
     ground_h, top_h = _num(attrs, "ground_h", 0, 0), _num(attrs, "top_h", 0, 0)
     for key, v in (("ground_h", ground_h), ("top_h", top_h)):
@@ -2495,6 +2527,10 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
            "instances": [], "open": [], "openings": [], "roof": None, "notes": [],
            "footings": [footings[k] for k in sorted(footings)], "kit": kit, "heights": heights, "terraces": [],
            "platform": {"key": pkey, "region": footprint, "level": lv[0]} if col else None}
+    if level:
+        out["plot"] = {"key": f"{prefix}_plot", "region": [rnd(q) for q in inset(footprint, -PLOT_APRON)],
+                       "level": round(ground_m, 3), "grade": _num(attrs, "grade", 0.3, 0.0),
+                       "max_cut": _num(attrs, "max_cut", 3.0, 0.0)}
     for k in range(storeys):
         out["storeys"].append({"key": f"{prefix}_s{k}", "region": rings[k], "level": lv[k]})
     for path, lo, hi in sp["flights"]:
@@ -2889,7 +2925,7 @@ def key_of(name):
 
 
 ATTRS = ["storeys", "storey_h", "ground_h", "top_h", "plinth", "porch", "walk_out", "doors", "stair", "rooms", "faces",
-         "setback", "overhang", "colonnade",
+         "setback", "overhang", "colonnade", "ground", "max_cut", "grade",
          "kit", "roof", "bays", "fill"]
 
 
@@ -2984,6 +3020,9 @@ def write(step, out):
         o.feature(f["key"], "platform", region=f["region"], level=f["level"])
     if out.get("yard"):
         o.feature(out["yard"]["key"], "yard", region=out["yard"]["region"])
+    if out.get("plot"):
+        pl = out["plot"]
+        o.feature(pl["key"], "plot", region=pl["region"], level=pl["level"], grade=pl["grade"], max_cut=pl["max_cut"])
     for r in out["rooms"]:
         o.feature(r["key"], "room", region=r["region"], storey=r["storey"])
     for f in out["flights"]:

@@ -61,6 +61,23 @@ Rules (ours):
    halls whose own outlines overlap, or a hall whose outline passes the yard's inner face, are
    said the same way and the later one (the hall, then the wings in order, left before right)
    is not returned: `lay` would wall two buildings in one place.
+9. **Level ground.** `ground = "level"`: the court returns a `plot` (kinds.toml), `<court>_plot`:
+   the yard's outline (with no yard, the box round the halls) moved out `PLOT_APRON` (1.5 m) on
+   every side, with `level` the mean of the land this step reads at every post inside it and
+   at its corners, to the millimetre. `lay`, a layer above, then reads level ground under the
+   wall and under every hall, so the halls' floors are one height and the wall's foot is on
+   the ground all round; none of them needs a plot of its own (lay.py rule 19). The author
+   writes the court's place once: without this the yard's four corners had to be worked out
+   from `at`, `to` and the bays and written again as a pad (examples/realm, "Before"). The
+   court's `max_cut` (3 m) and `grade` (0.3) are its plot's, passed on: the core's
+   `authority.max_change`, naming the plot, is answered on the court. What holds: the plot is
+   shaped with `order = 1` (kinds.toml), so a way in this layer or a layer above, ending at the
+   gate or passing by, gives way to it, and the halls stand on the level they were reckoned
+   from. What does not: an anchored kind, a second plot over the same ground, or anything
+   ordered after it still overrides it; this step cannot see that, and `check` says it where it
+   reaches a hall's wall (check.py rule 12, `plot_lost`). The yard's own ground away from a hall,
+   and the yard wall (rule 18: it stands on the ground as it lies), are not judged. Any other
+   word is `params`.
 
 Codes are `step.<id>.<code>`: `params` (error: a court's attribute, or a kit with no bay),
 `court_meets` (warning), `courts` (info, what was returned).
@@ -71,9 +88,12 @@ Library code imports only viasdk and the standard library (R19b).
 import json
 import math
 
+from viasdk import RpcError
+
 FIT = 5              # mm two outlines may overlap and still be said to touch
 PASSED = ("storey_h", "plinth", "porch", "walk_out", "roof")
-ATTRS = ["to", "kit", "yard", "hall", "wings", *PASSED]
+ATTRS = ["to", "kit", "yard", "hall", "wings", "ground", "max_cut", "grade", *PASSED]
+PLOT_APRON = 1500    # mm a court's plot reaches beyond its yard (rule 9)
 
 EXPLAIN = {
     "params": "A court's attribute, or its kit, cannot be laid from. The message names it.",
@@ -219,7 +239,7 @@ def overlap(a, b):
 
 
 def plan_court(name, at, attrs, kits):
-    """One court's buildings and notes (rules 1 to 8). `at` is its point in mm, `kits` a function
+    """One court's buildings, its plot and notes (rules 1 to 9). `at` is its point in mm, `kits` a function
     of a taxon that gives `kit_facts`. Returns `(buildings, notes)`: a building is `{key, ring,
     attrs, box}`, its ring in mm and counter-clockwise from its front, `box` its outline in the
     court's own frame `(u0, v0, u1, v1)`."""
@@ -241,6 +261,16 @@ def plan_court(name, at, attrs, kits):
         return (at[0] + u[0] * a + v[0] * b, at[1] + u[1] * a + v[1] * b)
     passed = {k: attrs[k] for k in PASSED if k in attrs}
     out, notes = [], []
+    level = attrs.get("ground") or ""
+    if level not in ("", "level"):
+        raise ParamError("ground", f"`ground` is {level!r}",
+                         'write `ground = "level"` for one plot levelled under the court, or leave it out')
+    bank = {}
+    for k, d in (("max_cut", 3.0), ("grade", 0.3)):
+        got = attrs.get(k, d)
+        if _mm(got) is None:
+            raise ParamError(k, f"`{k}` is {got!r}", f"write `{k}` as a number, 0 or more")
+        bank[k] = float(got)
     yard = attrs.get("yard") or None
     inner = None                                   # the yard's inner face, in the frame
     if yard is not None:
@@ -352,6 +382,12 @@ def plan_court(name, at, attrs, kits):
             continue
         kept.append((key, box, grown))
         out.append({"key": key, "ring": ring(pts), "attrs": a, "box": box})
+    if level and out:                              # one plot under the whole court (rule 9)
+        boxes = [b["box"] for b in out if b.get("yard")] or [b["box"] for b in out]
+        u0, v0 = min(b[0] for b in boxes) - PLOT_APRON, min(b[1] for b in boxes) - PLOT_APRON
+        u1, v1 = max(b[2] for b in boxes) + PLOT_APRON, max(b[3] for b in boxes) + PLOT_APRON
+        out.append({"key": f"{name}_plot", "ring": ring([(u0, v0), (u1, v0), (u1, v1), (u0, v1)]), "plot": True,
+                    **bank})
     return out, notes
 
 
@@ -401,6 +437,50 @@ def read_courts(step):
     return out
 
 
+def inside(ring, p):
+    """Whether `p` lies in the ring or on its edge."""
+    x, y, odd = p[0], p[1], False
+    for (x0, y0), (x1, y1) in zip(ring, ring[1:] + ring[:1]):
+        cross = (x1 - x0) * (y - y0) - (y1 - y0) * (x - x0)
+        if cross == 0 and min(x0, x1) <= x <= max(x0, x1) and min(y0, y1) <= y <= max(y0, y1):
+            return True
+        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+            odd = not odd
+    return odd
+
+
+def posts_in(ring, grid):
+    """Every post of the grid inside the ring (edges included), then the ring's corners: the
+    points lay.py reads a building's ground at (its rule 2), so a court's level and the ground
+    its halls then read are one number."""
+    out = []
+    if grid and grid.get("resolution_mm") and grid.get("extent_mm"):
+        x0, y0, r = int(grid["extent_mm"][0]), int(grid["extent_mm"][1]), int(grid["resolution_mm"])
+        nx, ny = int(grid.get("nx", 0)), int(grid.get("ny", 0))
+        i0 = max(0, -(-(min(p[0] for p in ring) - x0) // r))
+        i1 = min(nx - 1, (max(p[0] for p in ring) - x0) // r)
+        j0 = max(0, -(-(min(p[1] for p in ring) - y0) // r))
+        j1 = min(ny - 1, (max(p[1] for p in ring) - y0) // r)
+        for j in range(j0, j1 + 1):
+            for i in range(i0, i1 + 1):
+                p = (x0 + i * r, y0 + j * r)
+                if inside(ring, p):
+                    out.append(p)
+    return out + list(ring)
+
+
+def read_level(step, ring):
+    """The mean of the land under a plot (rule 9), metres to the millimetre; 0 in a world with
+    no terrain."""
+    try:
+        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
+    except (LookupError, RpcError):                # as lay.py's read_ground: no surface field
+        return 0.0
+    pts = posts_in(ring, step.grid)
+    h = [float(v) for v in _list(step.eval(f"= f('{surface.name}')", x=[p[0] for p in pts], y=[p[1] for p in pts]))]
+    return round(sum(h) / len(h), 3)
+
+
 def read_kit(step, taxon):
     t = step.pack(select="@" + taxon, columns=["bounds", "params", "shared"])
     rows = []
@@ -430,6 +510,10 @@ def generate(step):
         return
     o = step.out
     for b in buildings:
+        if b.get("plot"):
+            o.feature(b["key"], "plot", region=b["ring"], level=read_level(step, b["ring"]),
+                      grade=b["grade"], max_cut=b["max_cut"])
+            continue
         o.feature(b["key"], "building", region=b["ring"], **b["attrs"])       # the SDK takes millimetres
     x0_, y0_, x1_, y1_ = (step.grid or {}).get("extent_mm") or (-math.inf, -math.inf, math.inf, math.inf)
     for i, n in enumerate(notes):
@@ -446,5 +530,6 @@ def generate(step):
                      f"move it {n['by'] / 1000:g} m or more: `from` is along the axis and `off` away from it"
                      + ("" if n["wall"] else "; or move the other"),
                      **kw, **({"explain": EXPLAIN["court_meets"]} if i == 0 else {}))
-    step.info("courts", "step." + step.id, f"{len(courts)} courts, {len(buildings)} buildings", "none needed",
-              data={"courts": len(courts), "buildings": len(buildings)}, explain=EXPLAIN["courts"])
+    count = sum(1 for b in buildings if not b.get("plot"))
+    step.info("courts", "step." + step.id, f"{len(courts)} courts, {count} buildings", "none needed",
+              data={"courts": len(courts), "buildings": count}, explain=EXPLAIN["courts"])

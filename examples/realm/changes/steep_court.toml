@@ -1,0 +1,7 @@
+# Senhal written on the hillside west of the village, where the land falls 15 m in 100.
+[feature.senhal]
+at = [290, 300]
+to = [290, 310]
+
+[feature.senhal_gate]
+at = [290, 291]

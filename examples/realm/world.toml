@@ -1,0 +1,48 @@
+name       = "realm"
+extent     = [0, 0, 768, 640]                 # metres: x east, y north; the sea is to the south
+resolution = 1
+datum      = "sea"
+seed       = 31
+include    = ["land", "water", "ways", "town", "building", "map", "review"]
+pack       = "packs/realm.toml"               # three kits as one pack (packs/make_pack.py)
+
+[let]
+sea = 0                                       # metres: the sea's surface
+
+[field.height]                                # the terrain; the uplands step adds its land as a row
+role = "surface"
+base = "= 0"
+
+[field.water]                                 # dry, the ground; the sea at `sea`
+tags = ["water_level"]
+base = "= max(f('height'), sea)"
+
+[field.clearing]
+role = "keep_out"
+base = "= 0"
+
+[step.uplands]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:land/uplands.py"]
+params  = { relief = 40, base = -3, fall = 180, rounds = 30, erode = 0.008, rough = 0.6, rough_wave = 280, ridges = 0.06 }
+
+[layer.places]
+file  = "layers/places.toml"
+owner = "level design"
+rank  = 1
+
+[layer.ways]
+file  = "layers/ways.toml"
+owner = "level design"
+rank  = 2
+
+[layer.walls]
+file  = "layers/walls.toml"
+owner = "walls"
+rank  = 3
+
+[layer.names]
+file  = "layers/names.toml"
+owner = "names"
+rank  = 4

@@ -53,6 +53,9 @@ fill     = []                            # [{ storeys, sides, pattern }]: the ba
 setback  = []                            # [{ storey, sides, by }]: from that storey up, those sides stand `by` metres inside the outline
 overhang = []                            # [{ storey, sides, by }]: the same, outside it
 colonnade = []                           # [{ sides, depth }]: on those sides the walls stand `depth` metres inside the outline, behind the kit's posts
+ground   = ""                            # "level": a plot under the building, levelled at the ground its floor was reckoned from (lay.py rule 19)
+max_cut  = 3                             # with `ground = "level"`: the most its plot may cut or bank the land, metres (kind.plot)
+grade    = 0.3                           # with `ground = "level"`: its plot's bank, rise over run (kind.plot)
 faces    = []                            # a word for each side of the outline, in order: what it faces ("front", "party", "back", "end"); `fill` may choose by it
 
 [kind.row]                               # buildings side by side along a frontage, written in bays (row.py)
@@ -90,6 +93,9 @@ plinth   = 0.3
 porch    = 2
 walk_out = 3
 roof     = ""
+ground   = ""                            # "level": one plot under the whole court (court.py rule 9)
+max_cut  = 3                             # with `ground = "level"`: the most its plot may cut or bank the land, metres
+grade    = 0.3                           # with `ground = "level"`: its plot's bank, rise over run
 
 [kind.pipe]                              # a pipe between two kits, written by its points and their heights (pipe.py)
 authority = "anchored"
@@ -132,6 +138,37 @@ requires  = ["level"]                    # storey over part of it, at the same h
 [kind.platform.surface.floor]
 base = "= level"
 
+# A plot: the ground a building or a court stands on, levelled (lay.py rule 19, court.py rule 9).
+# Under its region the ground is `level`; outside, the ground is held within `grade` (rise over run)
+# of that level out to 10 m and fades into the land by 25 m, as lib/land's pad does, whose formula
+# this is with the level stated in place of the mean the core would find: the step that returns
+# the plot has already reckoned its floors from that number. Levelling that moves the ground more
+# than `max_cut` metres is `authority.max_change`, naming the plot; the building or the court that
+# returned it takes `grade` and `max_cut` and passes them on. Shaped, with `order = 1`: applied
+# after every shaped entry of order 0 whatever its layer (authority.md 4.2: nesting first, then
+# `order`, then layer rank), so a way's bed, a street's, a pad or a trail, in a layer above or
+# below, gives way to it, and the ground under the building is the level its floors were reckoned
+# from. A doorway's sill (shaped, `order = 2`) holds on it. What still overrides it: an anchored
+# kind (a ford, an `enclosure`, a `firm_pad`), a kind nested after it (one standing `on` it, or
+# lying wholly inside it), an entry of a higher `order`, and a second plot over the same ground
+# (the later by layer rank, then name). `check` says where the ground under a building on a plot
+# is not what its floor was reckoned from (check.py rule 12, `plot_lost`).
+[kind.plot]
+authority = "shaped"
+requires  = ["level"]
+radius    = 26                              # the bank's 10 m and its 15 m fade
+
+[kind.plot.defaults]
+grade   = 0.3                               # the steepest bank, rise over run (17 degrees)
+max_cut = 3                                 # metres the plot may cut or bank the ground, at most
+
+[kind.plot.effect.level]
+field      = "role:surface"
+value      = "= clamp(v, level - grade * d, level + grade * d)"
+mask       = "= 1 - smoothstep(10, 25, d)"
+max_change = "= max_cut"
+order      = 1                              # after a way's bed (0), before a doorway's sill (2)
+
 [kind.yard]                              # the outline of a building of no storeys (lay.py rule 18): its walls
 authority = "anchored"                   # stand round it on the terrain. It owns no surface and writes no field.
 
@@ -141,6 +178,7 @@ requires  = ["storey"]
 names     = ["storey"]
 
 [kind.doorway]                           # a path through the wall line, outside to inside, on the terrain
+authority = "shaped"                     # with `order` below: a way's bed beside the door gives way to the sill (K11)
 connector = "foot"
 requires  = ["sill_z"]
 defaults  = { flat = 1.5 }
@@ -150,6 +188,13 @@ field  = "role:surface"                  # flat to `flat` metres off the path, s
 value  = "= sill_z"                      # its end reads `sill_z` (lay sets `flat` to at least the
 mask   = "= 1 - smoothstep(flat, flat + 1.5, d)"   # posts' diagonal)
 radius = 5
+order  = 2                               # after every other shaped entry on the ground, whatever its layer: a
+                                         # road's bed, a street's, a pad, a plot. Derived, as it was until K11,
+                                         # the sill gave way to all of them, and a door beside a way was
+                                         # `surface.gap` (examples/realm, "Before"). Not anchored: two doors
+                                         # that face each other across a street would then be judged against
+                                         # each other (`authority.squeezed`, four a build in examples/village),
+                                         # and a door on an anchored yard would be `authority.conflict`.
 
 [kind.flight]                            # a stair or a ramp: a path owning one sloping surface
 connector = "foot"

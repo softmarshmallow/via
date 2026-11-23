@@ -205,6 +205,14 @@ open, and its place here is its destination.
 
 ### `spec/geometry.md`
 
+- [ ] **A way that ends on a ford placed by a selector is said to cross the stream.**
+      `examples/realm` (K11): `rindle_ford` stands `on = { of = "uplands", class = "feature" }`,
+      the stream a step returned, and both roads end on it, yet each is `geom.unowned_crossing`
+      with the stream at the ford's own point (439.748, 236.622). In `examples/ford`, whose ford
+      stands `on` its beck by name, the lanes raise none. A produced name cannot be written
+      (R3), so a ford on a made stream cannot be named onto it: 2.7's "the end of one named onto
+      a point on the other" should hold for a point placed `on` the other by a selector.
+      (From K11 of docs/plan-kits.md, 2026-11-23.)
 - [ ] A path an import brings is in no crossing check (`geometry.md` 2.7): two imported paths,
       or an imported one and one of the world's, cross with nothing said. Older than R71.
       (From K6 of docs/plan-kits.md, 2026-11-23; the independent review.)
@@ -269,6 +277,14 @@ open, and its place here is its destination.
 
 ### `spec/graph.md`
 
+- [ ] **A step that reads a field its layer's peers write is `diag.internal`.** `examples/realm`
+      (K11): the court step read the terrain (to find its plot's level) in the layer where the
+      roads, routed over that terrain, also stand: "`step:courts` gave another value in the
+      final graph than in its layer's pass: the value of its layer's pass is the one that
+      joined". Moving the ways to a layer above builds. The engine knows the cause and says an
+      internal fault; it should say which entry of which feature of its layer the step read,
+      and to move one of them up a layer.
+      (From K11 of docs/plan-kits.md, 2026-11-23.)
 - [ ] **Warm builds that differ from clean ones, found by K5's review and older than it.** Each
       reproduces on the engine before K5. (1) The debug check `change entry ... has no cause`
       (crates/via-cli/src/changes.rs) fires when a hand instance is added over a run's member,
@@ -1059,6 +1075,15 @@ open, and its place here is its destination.
 
 ### `spec/assets.md`
 
+- [ ] **A kit is not a unit a second world can name.** A world has one pack (`pack` takes a
+      string: a list is `doc.type`), and two kits' packs joined are `doc.syntax` (a taxon
+      table twice) and then seven ids bound twice (`base`, `base_corner`, `door`, `post`,
+      `roof_gable`, `roof_slope`, `tile`) and a material coloured two ways. `examples/realm`
+      writes one pack from three with a script that prefixes every id (`packs/make_pack.py`,
+      115 lines). What a kit states travels with its taxon (R66); where its pieces live and what
+      they are called does not. For K10's last review: a pack that includes another, or ids
+      scoped by taxon.
+      (From K11 of docs/plan-kits.md, 2026-11-23.)
 - [ ] An unknown key on a taxon is silent: `[taxon.x] shared = { ... }` written beside `defaults`
       and not in it builds with exit 0 and states nothing (`assets.md` 5 says `defaults` or
       none). Older than K6, which made it matter.
@@ -1470,6 +1495,34 @@ open, and its place here is its destination.
 
 ### `lib/building`
 
+- [ ] **What the realm left** (K11, `examples/realm`). Not built: a plot that keeps trees off (it
+      has no `keep_out`: a pad's would warn of every piece of a kit); one plot for buildings that
+      are not a court; a row on a plot (its houses step, and on the realm's slope the ground
+      stands up to 0.26 m over a house's floor on its uphill side, 0.70 m once the village is
+      moved up the valley: nothing says so, since rule 13 reads only a foot in the air). Not
+      said at all: a house that stands in water (`flood`: 2 halls and 32 pieces in water, 66 m
+      of road under more than 0.3 m, and the only word is lib/review's that the ford is 3.2 m
+      deep); a settlement whose land a new seed changed under it (`new_seed`: every instance
+      moves, the floors with the land, and only the roads' crossings of the new stream are
+      said, 25). A way that keeps off what stands is written in each route (`+ 60 * (1 -
+      smoothstep(6, 12, dist('kind:building', 14)))`); without it the trail went through the
+      temple (`through_fane`: 15.2 m of trail inside it, 108 `place.keep_out`).
+      (From K11 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **Ground over a floor, for every building.** check.py rule 12 (`plot_lost`, K11's review)
+      reads the ground as the build ended only along buildings that stand on a plot. Read along
+      every building it costs one more `expr.eval` of a few thousand points, and it would say
+      the ground stands over a floor by more than 0.05 m at 5 houses of `examples/realm` (0.255
+      m at most), 11 once the village is moved, and 11 of `examples/village` (0.278 m), whose
+      recorded rows would move. Rule: whether a house stepping with its land may have ground
+      over its floor at its uphill wall (a cellar wall, a retaining course: a kit piece), and
+      then say it everywhere or nowhere.
+      (From K11's review fix pass, 2026-11-24.)
+- [ ] **Two plots over one ground are said, not avoided.** Two buildings with `ground =
+      "level"` laid in one layer each return a plot, and neither `lay` call sees the other's;
+      where they overlap the later by name holds the ground (`examples/realm` `shrine`: the
+      temple's plot 0.539 m off its level along its back wall, said by `plot_lost`). A plot for
+      several buildings that are not a court, or `lay` reading its layer's plots, would avoid it.
+      (From K11's review fix pass, 2026-11-24.)
 - [ ] **What pipes leave** (K9, second slice; lib/building/pipe.py, from `examples/works`). Said
       or refused, not built: a leg that climbs along its length (`params`: a kit of straight
       pieces has none that climbs); a turn that is no elbow of the kit; a climb that is no riser

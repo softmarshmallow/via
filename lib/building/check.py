@@ -115,6 +115,24 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
    rule nothing in the kit's check named it. Source: ours, for the classical kit of
    `examples/temple`, where the research found no developer's account.
 
+12. **Level ground held** (lay.py rule 19, court.py rule 9). A building of one storey or more
+   whose outline lies wholly inside a `plot` stands on it (its own plot first, by name, else the
+   first by name that holds it). `lay` judged its wall's foot against the level the plot states;
+   this step reads the ground as it ended, which `lay` could not: a plot is shaped with
+   `order = 1`, and an anchored kind, a second plot over the same ground (two buildings laid in
+   one layer do not see each other's), or an entry ordered after it still overrides it. The
+   ground is read along the outline every 0.5 m (lay.py rule 13's points). Where it stands over
+   the ground storey's floor, or falls further below it than both the plinth the plot promised
+   and the depth of the kit's base (its `role:wall` piece tagged `storey:base`; none, 0), each by
+   more than 0.05 m, the building is `plot_lost` (warning), once, with the worst figure, the
+   length of outline it holds along, and, where the step can tell, what shaped the ground there:
+   the nearest feature within 30 m of the worst point that is another plot, or of a kind of
+   another library that is shaped or anchored (a way, a ford, a pad). Else it says the ground was
+   shaped after `lay` ran. The yard of a court (a building of no storeys) is not judged: its wall
+   stands on the ground as it lies (lay.py rule 18). Buildings on no plot are not judged here:
+   `lay` judged them against the ground it read, which nothing levels afterwards but what a
+   world writes in a layer above (TODO). Source: ours; asked by K11's review (examples/realm).
+
 `params`: `riser_max` (0.19 m), `going_min` (0.25 m), `turn_max` (45), `inner_door` (0.9 m),
 `pitch_slack` (0.05 m, for every kit measure), `kits` (taxon paths, default none). Codes are `step.<id>.<code>`;
 `checked` (info) counts what was judged.
@@ -127,9 +145,18 @@ Library code imports only viasdk and the standard library (R19b).
 import json
 import math
 
+from viasdk import RpcError
+
 DEPTH = 1000         # mm along a doorway from its inner end within which a piece stands beside it
 LOW, HIGH = 0.5, 2.0  # metres below and above a doorway's sill a piece's foot stands to be beside it
 REACH = 3000         # mm across a doorway past which a piece does not narrow it
+FOOT_STEP = 500      # mm between the points the ground is read at along an outline (rule 12, lay.py's rule 13)
+FOOT_SEEN = 0.05     # metres the ground may stand off what a plot promised and not be said (lay.py's)
+NEAR = 30000         # mm round the worst point within which what shaped the ground is looked for
+# lib/building's own kinds: none of them is what cut a plot (a doorway raises the ground to its
+# sill, which is the floor's height, and is said by `door` checks if anything).
+OWN = ("building", "court", "row", "storey", "room", "flight", "doorway", "footpath", "footing",
+       "platform", "roof", "yard", "pipe", "pipe_leg")
 
 # What stands in no one's way across a doorway: the door's own piece, a floor tile, the roof.
 # Pieces that stand in no doorway's way: they lie flat, hang in the opening, or stand under the floor
@@ -191,6 +218,11 @@ EXPLAIN = {
     "kit_height": "A kit piece's measured height is not the storey height of a building that stacks "
     "it: on a storey below another it stands into the one above, or stops short of it. Make the "
     "piece one storey high, or set the building's `storey_h` to the kit's.",
+    "plot_lost": "A building stands on a plot (`ground = \"level\"`), and `lay` reckoned its floor and "
+    "judged its wall's foot against the plot's level. Something shaped the ground after that: a second "
+    "plot over the same ground, an anchored kind, or an entry ordered after the plot. Along part of "
+    "its wall the ground now stands over the floor, or falls below it further than the plinth and the "
+    "kit's base reach. Move what shaped it off the plot, or the building away from it.",
     "checked": "What the building check judged: storeys, rooms, flights, meetings and kit pieces.",
 }
 
@@ -900,7 +932,8 @@ def read_features(step):
     out = []
     for kind, cols in (("storey", ["level"]), ("room", ["storey"]), ("flight", ["z0", "z1"]),
                        ("doorway", ["sill_z"]), ("footpath", []), ("platform", ["level"]),
-                       ("building", ["kit", "storey_h", "storeys", "ground_h", "top_h", "roof"])):
+                       ("building", ["kit", "storey_h", "storeys", "ground_h", "top_h", "roof", "plinth", "ground"]),
+                       ("plot", ["level"])):
         try:
             fl = step.features(select=f"kind:{kind}", columns=cols)
         except Exception:                         # a kind no feature has: nothing to judge
@@ -958,6 +991,172 @@ def read_pieces(step, taxons, kit_rows):
     return out
 
 
+def key_of(name):
+    """A key from a building's name, as lay.py makes it (identity.md 2.1)."""
+    return "".join(c if c.isalnum() or c in "_-" else "_" for c in str(name))
+
+
+def foot_points(ring):
+    """Points along a ring every `FOOT_STEP`, from half a step in on each side (lay.py rule 13)."""
+    pts, n = [], len(ring)
+    for i in range(n):
+        (x0, y0), (x1, y1) = ring[i], ring[(i + 1) % n]
+        L = math.hypot(x1 - x0, y1 - y0)
+        k = max(1, int(round(L / FOOT_STEP)))
+        pts += [(int(round(x0 + (x1 - x0) * (j + 0.5) / k)), int(round(y0 + (y1 - y0) * (j + 0.5) / k)))
+                for j in range(k)]
+    return pts
+
+
+def on_plots(features):
+    """Each building of one storey or more that stands on a plot (rule 12): `(building, plot,
+    floor)`, the floor its ground storey's level; in name order. A building with no ground storey
+    among the features is left out."""
+    plots = sorted((f for f in features if f["kind"] == "plot"), key=lambda f: f["name"])
+    levels = {f["name"].split("#", 1)[-1]: f["attrs"].get("level") for f in features if f["kind"] == "storey"}
+    out = []
+    for b in sorted((f for f in features if f["kind"] == "building"), key=lambda f: f["name"]):
+        if (b["attrs"].get("storeys") or 0) < 1:
+            continue
+        holds = [pl for pl in plots if all(inside(pl["ring"], p) for p in b["ring"])]
+        own = [pl for pl in holds if pl["name"].split("#", 1)[-1] == key_of(b["name"]) + "_plot"]
+        floor = levels.get(key_of(b["name"]) + "_s0")
+        if holds and floor is not None:
+            out.append((b, (own or holds)[0], float(floor)))
+    return out
+
+
+def plots_lost(stands, foot, bases, cut_by=None):
+    """Rule 12's records. `stands` is `on_plots`'s; `foot` maps a building's name to its points
+    `[(x mm, y mm, ground m)]`; `bases` a kit's taxon to its base's depth in metres (0: none);
+    `cut_by(building, (x, y))` names what shaped the ground there, `(name, kind, metres off)` or
+    None."""
+    out = []
+    for b, pl, floor in stands:
+        pts = foot.get(b["name"]) or []
+        if not pts:
+            continue
+        plinth = float(b["attrs"].get("plinth") or 0.0)
+        base = float(bases.get(b["attrs"].get("kit"), 0.0) or 0.0)
+        reach = max(plinth, base)
+        step_ = (math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]) / 1000.0) if len(pts) > 1 else 0.0
+        low = [(floor - h - reach, x, y) for x, y, h in pts if floor - h - reach > FOOT_SEEN]
+        high = [(h - floor, x, y) for x, y, h in pts if h - floor > FOOT_SEEN]
+        if not low and not high:
+            continue
+        worst = max(low + high)
+        level = float(pl["attrs"].get("level") or 0.0)
+        what = []
+        if high:
+            w = max(high)
+            what.append(f"stands {w[0]:.3f} m over the floor along {len(high) * step_:.1f} m")
+        if low:
+            w = max(low)
+            past = (f"the base's {base:g} m" if base >= plinth and base > 0 else f"the plinth's {plinth:g} m")
+            what.append(f"falls {w[0] + reach:.3f} m below the floor, {w[0]:.3f} m past {past}, along "
+                        f"{len(low) * step_:.1f} m")
+        by = cut_by(b, (worst[1], worst[2])) if cut_by else None
+        cause = (f"; the nearest thing that shapes the ground there is `{by[0]}` ({by[1]}, {by[2]:.1f} m off)"
+                 if by else "; the ground there was shaped after `lay` ran")
+        hint = (f"keep `{by[0]}` off `{pl['name']}` (a way: end it or route it clear of the plot and its bank), "
+                "or move the building" if by and by[1] != "plot" else
+                f"two plots level one ground: move this building, or the one `{by[0]}` is under, further off "
+                "(a plot reaches 1.5 m past its building, and its bank 10 m more)"
+                if by else "move what shapes the ground there off the plot, or the building")
+        out.append(("warning", "plot_lost", b["name"],
+                    f"`{b['name']}` stands on `{pl['name']}`, levelled at {level:g} m, with its floor at "
+                    f"{floor:g} m; the ground along its wall " + " and ".join(what) + cause, hint,
+                    {"plot": pl["name"], "level": level, "floor": floor,
+                     "over": round(max(high)[0], 3) if high else 0.0,
+                     "under": round(max(low)[0], 3) if low else 0.0, "reach": reach,
+                     "length": round((len(high) + len(low)) * step_, 1),
+                     "by": list(by[:2]) if by else None},
+                    (worst[1] / 1000, worst[2] / 1000)))
+    return out
+
+
+def seg_dist(p, a, b):
+    ax, ay, bx, by_ = a[0], a[1], b[0], b[1]
+    dx, dy = bx - ax, by_ - ay
+    L2 = dx * dx + dy * dy
+    t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((p[0] - ax) * dx + (p[1] - ay) * dy) / L2))
+    return math.hypot(p[0] - ax - t * dx, p[1] - ay - t * dy)
+
+
+def nearest_cutter(cands, b, p, own_plot):
+    """Of `cands` (`{name, kind, authority, rings}`), the nearest to `p` that could have shaped a
+    plot's ground after it (rule 12): another plot, or a shaped or anchored kind of another
+    library. `(name, kind, metres off)`, or None."""
+    best = None
+    for c in cands:
+        if c["name"] in (b["name"], own_plot) or c["kind"] in OWN or c["authority"] not in ("shaped", "anchored"):
+            continue
+        d = math.inf
+        for r in c["rings"]:
+            if len(r) == 1:
+                d = min(d, math.hypot(p[0] - r[0][0], p[1] - r[0][1]))
+            for i in range(len(r) - 1):
+                d = min(d, seg_dist(p, r[i], r[i + 1]))
+            if len(r) >= 3 and inside(r, p):
+                d = 0.0
+        if best is None or (d, c["name"]) < (best[2], best[0]):
+            best = (c["name"], c["kind"], d)
+    return None if best is None or best[2] > NEAR else (best[0], best[1], round(best[2] / 1000, 1))
+
+
+def read_foot(step, stands):
+    """The ground as the build ended, along each standing building's outline (rule 12)."""
+    try:
+        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
+    except (LookupError, RpcError):
+        return {}
+    pts = {b["name"]: foot_points(b["ring"]) for b, _, _ in stands}
+    allp = [p for b, _, _ in stands for p in pts[b["name"]]]
+    if not allp:
+        return {}
+    h = _list(step.eval(f"= f('{surface.name}')", x=[p[0] for p in allp], y=[p[1] for p in allp]))
+    out, i = {}, 0
+    for b, _, _ in stands:
+        n = len(pts[b["name"]])
+        out[b["name"]] = [(x, y, float(v)) for (x, y), v in zip(pts[b["name"]], h[i:i + n])]
+        i += n
+    return out
+
+
+def read_bases(step, stands):
+    """The depth of each standing building's kit's base, metres (0: none)."""
+    out = {}
+    for taxon in sorted({b["attrs"].get("kit") for b, _, _ in stands if b["attrs"].get("kit")}):
+        depth = 0.0
+        for r in sorted(read_kits(step, [taxon]), key=lambda r: r["id"]):
+            tags = r.get("tags") or []
+            if ("role:wall" in tags and "storey:base" in tags and r.get("bounds")
+                    and not any(t.startswith("variant:") for t in tags)):
+                depth = (r["bounds"][5] - r["bounds"][2]) / 1000.0
+                break
+        out[taxon] = depth
+    return out
+
+
+def read_cutters(step, b, p):
+    """What stands within `NEAR` of `p`, for `nearest_cutter`."""
+    x, y = p
+    box = [[x - NEAR, y - NEAR], [x + NEAR, y - NEAR], [x + NEAR, y + NEAR], [x - NEAR, y + NEAR]]
+    try:
+        fl = step.features(select="*", within=box)
+    except Exception:                             # nothing there to name
+        return []
+    out = []
+    for f, name in enumerate(_list(fl.get("name", []))):
+        try:
+            rings = [[(int(v[0]), int(v[1])) for v in _list(r)] for piece in fl.rings(f) for r in piece]
+        except Exception:
+            rings = []
+        out.append({"name": name, "kind": _list(fl["kind"])[f], "authority": _list(fl["authority"])[f],
+                    "rings": rings})
+    return out
+
+
 def lint(step):
     try:
         p = params_of(step.params)
@@ -966,8 +1165,15 @@ def lint(step):
         return
     said = set()
     kits = read_kits(step, p["kits"])
-    for sev, code, subject, msg, hint, data, pos in judge(read_features(step), read_meetings(step), kits, p,
-                                                         read_pieces(step, p["kits"], kits)):
+    features = read_features(step)
+    recs = judge(features, read_meetings(step), kits, p, read_pieces(step, p["kits"], kits))
+    stands = on_plots(features)                  # rule 12: the ground under a plot, as it ended
+    if stands:
+        own = {b["name"]: pl["name"] for b, pl, _ in stands}
+        lost = plots_lost(stands, read_foot(step, stands), read_bases(step, stands),
+                          lambda b, pt: nearest_cutter(read_cutters(step, b, pt), b, pt, own[b["name"]]))
+        recs = recs[:-1] + lost + recs[-1:] if recs and recs[-1][1] == "checked" else recs + lost
+    for sev, code, subject, msg, hint, data, pos in recs:
         kw = {"data": data}
         if pos is not None:
             kw["position"] = pos

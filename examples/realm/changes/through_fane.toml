@@ -1,0 +1,4 @@
+# The ways routed over the land alone, with nothing to keep them off a building (the realm as it
+# was first built): the path from the village comes over the hilltop and through the temple.
+[feature.fane_path]
+route = "= 1 + 0.12 * pow(slope('height'), 2)"

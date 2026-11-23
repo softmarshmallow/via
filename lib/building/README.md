@@ -156,11 +156,15 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
   from the corner, or 1.3 m or more. Between, `lay` refuses `stair` (`params`, naming the gap); before
   M7 close it built a stub no piece closes, and the errors named produced corners you cannot write.
 - **Levelling the site.** `ground` is the mean of the terrain under the outline, and the doorway's
-  `sill` sets the ground at its end to the floor. Any shaped kind under the building (a `terrace`,
-  a way's bed) may set those posts instead, and the doorway and floor then gap (`surface.gap`, a
-  fresh agent's terrace: 29 mm, M7 close). On a slope, `plinth = 0` keeps the sill from raising a
-  mound at the door (the storey's floor cuts the terrain inside, `cut`); put no other ground-shaping
-  kind under the doorway. A yard or pad of the building's own is TODO (M7 close).
+  `sill` sets the ground at its end to the floor. Until K11 the sill was derived, so any shaped
+  kind under or beside the building (a `terrace`, a `pad`, a way's bed) set those posts instead
+  and the doorway and floor then gapped (`surface.gap`: a fresh agent's terrace, 29 mm, M7 close;
+  every door beside a road in `examples/realm`, 270 to 631 mm). Since K11 the sill is shaped and
+  ordered after every other shaped entry, so it holds on all of these; only an anchored kind (a
+  `firm_pad`, lib/town's `enclosure`) still overrides it. For level ground under a building or a
+  court write `ground = "level"` ("Level ground", below). On a slope without it, `plinth = 0`
+  keeps the sill from raising a mound at the door (the storey's floor cuts the terrain inside,
+  `cut`).
 - **Keeping trees out.** A `building` has no keep-out of its own, and a `clearing` over it puts
   `place.keep_out` on `lay`'s own pieces. Fade the scatter's `density` near it instead:
   `density = "= ... * smoothstep(5, 8, dist('kind:building', 10))"` (station's shrubs). A house
@@ -721,6 +725,70 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
   a produced storey is TODO (M7 close).
 - **Asking about it.** `via query` runs no step (`surfaces.md` 7): what `lay` returned is in the
   build's `features.json` and `meets.json`, not in `via query`'s answers.
+
+### Level ground, and a sill beside a way (K11)
+
+Asked by `examples/realm`, the first kit buildings on land that was not written for them: land
+made by a step, with ways routed over it. Two things were found by building it with the library
+as it stood, and a third by trying what there was.
+
+**A door beside a way.** `kind.doorway` named no authority, so its sill was derived and gave way
+to every shaped entry on the ground. A street's bed 4 m from a row's doors, and a trail's 5 m
+from a temple's, each set the posts the sill had set: 13 `surface.gap` errors in one build, 270
+to 631 mm, and 17 storeys no walk reached. The sill is now **shaped, with `order = 2`**: among
+the shaped entries it is applied after every one of a lower `order`, whatever its layer
+(authority.md 4.2: nesting first, then `order`, then layer rank), so a way's bed, a pad, a
+terrace and a plot (`order = 1`) all give way to it at the door. What still comes after it: a
+kind nested after the doorway (one standing `on` it, or lying wholly inside it), and a shaped
+kind whose effect has an `order` above 2; none in the libraries does today. Anchored
+was tried first and is not it: two anchored entries are judged against each other wherever one
+fades (authority.md 5), so two doors facing across a street were `authority.squeezed`, four a
+build in `examples/village`, and a door on an anchored yard was `authority.conflict`, an error.
+Cost: an anchored kind under a door (a `firm_pad`, an `enclosure`) still overrides the sill, and
+the doorway then gaps, as before.
+
+**Level ground** (`lay.py` rule 19, `court.py` rule 9; `kind.plot`). A building reads the ground
+and does not shape it, and a court's yard on real land was 1.65 m higher at one corner than
+another. What existed, each written by hand under the temple and the court (`examples/realm`,
+"Before"):
+
+| Kind | What it did |
+|---|---|
+| lib/land `pad` | Levelled, and kept everything off it: `place.keep_out` on every piece of the kit, about 400 in all |
+| lib/land `firm_pad`, lib/town `enclosure` | Anchored: overrode every sill (`surface.gap`), and with an anchored sill `authority.conflict` |
+| lib/town `terrace` | Levelled to its own mean, read at the outline where its bank begins: the base still 0.147 m short along 41.7 m |
+
+and each needed the outline written again: the building's own region, or the yard's four
+corners, which a court's author never writes (they follow from `at`, `to` and the bays). So
+`ground = "level"` states it once. A **plot** is the outline moved out 1.5 m, levelled at a
+**stated** `level`, with pad's bank outside and nothing kept off it. The level is stated, not
+found by the kind (`under('mean')`), because the step that returns the plot has already reckoned
+its floors from that number: `lay` from the mean it read under the building (rule 2), `court`
+from the mean under the yard, read at the same posts `lay` reads. For a court the plot stands a
+layer below `lay`, which then reads level ground under the wall and every hall; for a building
+written by hand `lay` returns the plot itself and judges the wall's foot against the level, not
+against the land as it read it. A `row` takes none: its houses step with the land (rule 13).
+The building or the court takes the plot's `max_cut` and `grade` and passes them on, so the
+core's `authority.max_change`, naming the plot, is answered where the author wrote `ground`.
+
+**What holds and what does not** (K11's review). As first built the plot was shaped at
+`order = 0`, so any way in a layer above cut it: a road ending 9 m before Senhal's gate cut its
+apron 117 mm, a road beside a temple in a layer above `walls` cut 0.99 m under its colonnade,
+and two temples 2 m apart had one plot's bank over the other's wall, 0.39 to 0.54 m over its
+floor; none of it was said, since `lay` judged the foot against the level it stated and cannot
+see what is shaped after it. Now the plot is **`order = 1`**: after every shaped way, pad and
+trail, before the sill. The road probes then hold to the millimetre. What can still override
+it: an anchored kind (a `firm_pad`, an `enclosure`, a ford), a kind nested after it, an entry
+of a higher `order`, and a second plot over the same ground. For those `check` reads the ground
+as the build ended along every building that stands on a plot, and says `plot_lost` (check.py
+rule 12) with the worst figure, the length, and the nearest thing that shaped it: two temples
+2 m apart, "stands 0.600 m over the floor along 23.9 m; the nearest thing that shapes the
+ground there is `lay#bfane_plot`"; an anchored pad against a temple's back wall, 0.189 m over
+the floor along 13.4 m, naming the pad. What is not judged: a court's yard away from its halls,
+and the yard wall, which stands on the ground as it lies (rule 18); and buildings on no plot,
+which `lay` judged against the ground it read.
+Not built: a plot that keeps trees off (it has no `keep_out`; a kit's pieces would be warned
+of, as on a pad), and one plot for several buildings that are not a court.
 
 ## What the M5 worlds need from it
 

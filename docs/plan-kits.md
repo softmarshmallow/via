@@ -1,7 +1,7 @@
 # via: the kit plan
 
 Status: approved 2026-11-20, running. Committed: the research (cc99109), K1 and K2 (f529008),
-K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6 in two commits (aa93d3a, the kit stating what its pieces share; bc2ac73, the city block). K7 so far in two commits (e469406, the wall's foot; 26cb33f, a storey's own outline); its third slice, the roof on an L, is built and follows them with K7's review. K8 is one commit after it (2d88999, the temple and the court), and K9 one after that (a mount's rise and joints in the core, pipes and the works). Next: K10. K11 (a fantasy map) was added on 2026-11-23. The plan after the first cut (`docs/plan.md`): own the
+K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6 in two commits (aa93d3a, the kit stating what its pieces share; bc2ac73, the city block). K7 so far in two commits (e469406, the wall's foot; 26cb33f, a storey's own outline); its third slice, the roof on an L, is built and follows them with K7's review. K8 is one commit after it (2d88999, the temple and the court), and K9 one after that (a mount's rise and joints in the core, pipes and the works). K11, the fantasy map, was built before K10, whose download waits on the owner's yes; it is one commit after K9. Next: K10. K11 (a fantasy map) was added on 2026-11-23. The plan after the first cut (`docs/plan.md`): own the
 modular building system, not only where a settlement stands, and review the archetypes and the
 SDK against what it shows.
 
@@ -152,6 +152,14 @@ Changed so far:
   The review's gravest findings were older than K9 and only met by it: warm builds after a
   pack edit. They are mended in the core with their cases. **Not built, said and filed:** a
   joint across an import, a veto of one pair, a pipe that takes its heights from its ports.
+
+- **K11, 2026-11-24.** Built before K10, since K10's download waits on the owner and the map
+  needs nothing from it; K10's last review now has the map's figures to read. One world, no
+  imports: imports would have needed the kits in each import's pack and each settlement's
+  ground given to it. **Changed:** no pipes (K9's hold on level ground only). What the map
+  forced was the ground, not the kits: a building now returns its own level ground and the
+  library states the order in which shaped ground meets (R77). Reusing three kits in a second
+  world took a script that merges their packs: the figure K10 reads.
 
 - **K11 added, 2026-11-23.** The owner asked whether a fantasy map demo was in the plan. It was
   not: the word stood only in K7's title, and the dogfood map of `docs/plan.md` was proposed

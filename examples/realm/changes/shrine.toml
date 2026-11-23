@@ -1,0 +1,13 @@
+# A shrine set close behind the temple, 2.1 m off its back wall, on level ground of its own: one
+# table. The two plots overlap, and the shrine's, the later of the two by name, holds the ground
+# between them (lib/building/kinds.toml, `kind.plot`): `lay` laid the temple against its own
+# level and cannot see it; `check` reads the ground as it ended (check.py rule 12).
+[feature.shrine]
+kind     = "building"
+region   = [[192.35, 525], [201.65, 525], [201.65, 531.3], [192.35, 531.3]]
+storey_h = 3.6
+plinth   = 0.6
+roof     = "hip"
+ground   = "level"
+kit      = "structure/timber"
+doors    = [{ storey = 0, side = 2, at = 4.65 }]

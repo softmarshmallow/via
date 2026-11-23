@@ -1,0 +1,6 @@
+# Senhal made larger: a yard of 17 bays by 14 (51.6 by 42.6 m, from 39.6 by 36.6), the hall
+# further in and the wings further out. One table, as before: the plot under it follows.
+[feature.senhal]
+yard  = { kit = "structure/yard", bays = [17, 14] }
+hall  = { bays = [5, 3], from = 30, veranda = 1, fill = [{ sides = [0], pattern = ["doors"] }, { sides = [1, 3], pattern = ["lattice"] }] }
+wings = [{ bays = [3, 2], from = 10, off = 12, fill = [{ sides = [0], pattern = ["lattice"] }, { sides = [1], pattern = ["doors", "wall"] }, { sides = [2], pattern = ["lattice", "wall", "wall"] }] }]

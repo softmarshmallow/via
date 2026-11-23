@@ -1,0 +1,7 @@
+# The court and the temple on the land as it lies: no plot under either (the realm as it was
+# first built, "Before" in the README).
+[feature.senhal]
+unset = ["ground"]
+
+[feature.fane]
+unset = ["ground"]

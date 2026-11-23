@@ -1,0 +1,812 @@
+# What a realm build measures (docs/plan-kits.md, K11: the fantasy map). Our own design and our own
+# names. Measures, never bytes (R15): each row names a measure of `measure.py` and the band it must
+# fall in. Taken by
+#
+#   python3 examples/realm/measure.py BUILD --world examples/realm/world.toml --run BUILD.run.json   # base
+#   python3 examples/realm/measure.py BUILD+<c> --base BUILD --run BUILD+<c>.run.json            # a change, built with --against
+#   python3 examples/realm/measure.py WARM --base BUILD --run WARM.run.json                       # the base again, unchanged, on its store
+#   python3.11 examples/realm/measure.py ... --check <section>
+#
+# Protocol of the numbers below: macOS arm64, release `via` built from the tree at 8c9ba2c (no
+# engine change since), VIA_LIB=lib, Python 3.12 (sdk/python/.venv) for the steps, lib/building
+# of the working tree with K11's mends (a plot under a building or a court, lay.py rule 19 and
+# court.py rule 9; a doorway's sill shaped and ordered after every other shaped entry) and K11's
+# review fix pass (the plot ordered after the ways, `order = 1`; check.py rule 12, `plot_lost`).
+# One fresh store: the base, then each change with --against the base, one build each, then the
+# base again unchanged on that store (`warm`). Measured 2026-11-24 in one run and checked in a
+# second. The fix pass moved three rows: `yard_z_mm` 65 to 0 in the base and 27 to 0 in
+# `larger_court`, and `no_ford`'s `moved` 5 to 0 (the yard wall's pieces by the gate): the road
+# that ends before the gate no longer cuts the court's plot. It added `plot_off_mm`, `plot_lost`
+# and the case `shrine`. A band is the measured number: not a target, it says where someone looks. A time's band
+# is wide: it is the machine's, and the row says only that the build finished in that time.
+
+# ------------------------------------------------------------------------------------------ base
+# The realm as written: 29 feature tables and 141 numbers, 104 of them in the places and the
+# ways. The steps return 87 features (15 buildings, 20 storeys, 17 doorways, 15 roofs, 2 plots...;
+# the temple is the sixteenth building, written by hand) and 1511 instances. Every door met; the
+# court's halls on one floor level and its plot level to the millimetre away from the doors'
+# sills (`plot_off_mm`; 117 mm before the review's fix, where the road that ends before the gate
+# cut its apron); the temple on its plot, its wall's foot 0.9 m over the ground all round and its
+# base 0.9 m deep. A walker makes all four stated walks. Said: the two roads cross the beck at the
+# ford they end on (TODO, spec/geometry.md).
+
+[base.built]
+measure = "built"
+band    = [1, 1]
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[base.surface_gap]
+measure = "surface_gap"
+band    = [0, 0]
+
+[base.unowned_crossing]
+measure = "unowned_crossing"
+band    = [2, 2]
+
+[base.keep_out]
+measure = "keep_out"
+band    = [0, 0]
+
+[base.squeezed]
+measure = "squeezed"
+band    = [0, 0]
+
+[base.conflict]
+measure = "conflict"
+band    = [0, 0]
+
+[base.internal]
+measure = "internal"
+band    = [0, 0]
+
+[base.max_change]
+measure = "max_change"
+band    = [0, 0]
+
+[base.plot_lost]
+measure = "plot_lost"
+band    = [0, 0]
+
+[base.base_short]
+measure = "base_short"
+band    = [0, 0]
+
+[base.foot_open]
+measure = "foot_open"
+band    = [0, 0]
+
+[base.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[base.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[base.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[base.params]
+measure = "params"
+band    = [0, 0]
+
+[base.court_meets]
+measure = "court_meets"
+band    = [0, 0]
+
+[base.unreached]
+measure = "unreached"
+band    = [0, 0]
+
+[base.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[base.buildings]
+measure = "buildings"
+band    = [16, 16]
+
+[base.halls]
+measure = "halls"
+band    = [15, 15]
+
+[base.storeys]
+measure = "storeys"
+band    = [20, 20]
+
+[base.plots]
+measure = "plots"
+band    = [2, 2]
+
+[base.doors]
+measure = "doors"
+band    = [17, 17]
+
+[base.doors_met]
+measure = "doors_met"
+band    = [17, 17]
+
+[base.features]
+measure = "features"
+band    = [116, 116]
+
+[base.laid_features]
+measure = "laid_features"
+band    = [87, 87]
+
+[base.instances]
+measure = "instances"
+band    = [1511, 1511]
+
+[base.foot_bare_dm]
+measure = "foot_bare_dm"
+band    = [0, 0]
+
+[base.foot_max_mm]
+measure = "foot_max_mm"
+band    = [900, 900]
+
+[base.buried_max_mm]
+measure = "buried_max_mm"
+band    = [255, 255]
+
+[base.court_floor_spread_mm]
+measure = "court_floor_spread_mm"
+band    = [0, 0]
+
+[base.yard_z_mm]
+measure = "yard_z_mm"
+band    = [0, 0]
+
+[base.plot_off_mm]
+measure = "plot_off_mm"
+band    = [0, 0]
+
+[base.pieces_in_water]
+measure = "pieces_in_water"
+band    = [0, 0]
+
+[base.halls_in_water]
+measure = "halls_in_water"
+band    = [0, 0]
+
+[base.ways_wet_dm]
+measure = "ways_wet_dm"
+band    = [0, 0]
+
+[base.ways_in_halls_dm]
+measure = "ways_in_halls_dm"
+band    = [0, 0]
+
+[base.ford_depth_mm]
+measure = "ford_depth_mm"
+band    = [281, 281]
+
+[base.street_m]
+measure = "street_m"
+band    = [68, 68]
+
+[base.street_grade_pct]
+measure = "street_grade_pct"
+band    = [5, 5]
+
+[base.east_road_m]
+measure = "east_road_m"
+band    = [49, 49]
+
+[base.east_road_grade_pct]
+measure = "east_road_grade_pct"
+band    = [9, 9]
+
+[base.senhal_road_m]
+measure = "senhal_road_m"
+band    = [345, 345]
+
+[base.senhal_road_grade_pct]
+measure = "senhal_road_grade_pct"
+band    = [12, 12]
+
+[base.fane_path_m]
+measure = "fane_path_m"
+band    = [429, 429]
+
+[base.fane_path_grade_pct]
+measure = "fane_path_grade_pct"
+band    = [25, 25]
+
+[base.walk_m]
+measure = "walk_m"
+band    = [462, 462]
+
+[base.walk_pairs]
+measure = "walk_pairs"
+band    = [4, 4]
+
+[base.walk_held]
+measure = "walk_held"
+band    = [4, 4]
+
+[base.walk_cut]
+measure = "walk_cut"
+band    = [0, 0]
+
+[base.map_labels]
+measure = "map_labels"
+band    = [11, 11]
+
+[base.map_ways]
+measure = "map_ways"
+band    = [25, 25]
+
+[base.map_water]
+measure = "map_water"
+band    = [1, 1]
+
+[base.map_regions]
+measure = "map_regions"
+band    = [2, 2]
+
+[base.map_floors]
+measure = "map_floors"
+band    = [3, 3]
+
+[base.written_features]
+measure = "written_features"
+band    = [29, 29]
+
+[base.written_numbers]
+measure = "written_numbers"
+band    = [141, 141]
+
+[base.written_numbers_places]
+measure = "written_numbers_places"
+band    = [104, 104]
+
+[base.build_ms]
+measure = "build_ms"
+band    = [0, 120000]
+
+# ------------------------------------------------------------------------------------------ warm
+# The base built again, unchanged, on its store: nothing runs.
+
+[warm.built]
+measure = "built"
+band    = [1, 1]
+
+[warm.errors]
+measure = "errors"
+band    = [0, 0]
+
+[warm.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[warm.added]
+measure = "added"
+band    = [0, 0]
+
+[warm.removed]
+measure = "removed"
+band    = [0, 0]
+
+[warm.moved]
+measure = "moved"
+band    = [0, 0]
+
+[warm.nodes_ran]
+measure = "nodes_ran"
+band    = [0, 0]
+
+[warm.build_ms]
+measure = "build_ms"
+band    = [0, 20000]
+
+# ------------------------------------------------------------------------------------------ flood
+# The sea raised 9 m, to the village's lower row: two halls and 32 pieces stand in water, 66 m of
+# road under more than a walker wades. Said: only lib/review's, that the ford is 3.2 m deep.
+
+[flood.built]
+measure = "built"
+band    = [1, 1]
+
+[flood.errors]
+measure = "errors"
+band    = [0, 0]
+
+[flood.warnings]
+measure = "warnings"
+band    = [3, 3]
+
+[flood.halls_in_water]
+measure = "halls_in_water"
+band    = [2, 2]
+
+[flood.pieces_in_water]
+measure = "pieces_in_water"
+band    = [32, 32]
+
+[flood.ways_wet_dm]
+measure = "ways_wet_dm"
+band    = [663, 663]
+
+[flood.ford_depth_mm]
+measure = "ford_depth_mm"
+band    = [3205, 3205]
+
+[flood.walk_pairs]
+measure = "walk_pairs"
+band    = [4, 4]
+
+[flood.walk_held]
+measure = "walk_held"
+band    = [3, 3]
+
+[flood.walk_cut]
+measure = "walk_cut"
+band    = [1, 1]
+
+[flood.moved]
+measure = "moved"
+band    = [0, 0]
+
+[flood.surface_gap]
+measure = "surface_gap"
+band    = [0, 0]
+
+[flood.base_short]
+measure = "base_short"
+band    = [0, 0]
+
+[flood.unreached]
+measure = "unreached"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ larger_court
+# Senhal of 17 bays by 14: its plot follows, the halls stay on one level, and the road meets the
+# gate where it was. Nothing is said.
+
+[larger_court.built]
+measure = "built"
+band    = [1, 1]
+
+[larger_court.errors]
+measure = "errors"
+band    = [0, 0]
+
+[larger_court.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[larger_court.added]
+measure = "added"
+band    = [12, 12]
+
+[larger_court.removed]
+measure = "removed"
+band    = [0, 0]
+
+[larger_court.moved]
+measure = "moved"
+band    = [311, 311]
+
+[larger_court.buildings]
+measure = "buildings"
+band    = [16, 16]
+
+[larger_court.plots]
+measure = "plots"
+band    = [2, 2]
+
+[larger_court.court_floor_spread_mm]
+measure = "court_floor_spread_mm"
+band    = [0, 0]
+
+[larger_court.yard_z_mm]
+measure = "yard_z_mm"
+band    = [0, 0]
+
+[larger_court.plot_off_mm]
+measure = "plot_off_mm"
+band    = [0, 0]
+
+[larger_court.plot_lost]
+measure = "plot_lost"
+band    = [0, 0]
+
+[larger_court.court_meets]
+measure = "court_meets"
+band    = [0, 0]
+
+[larger_court.max_change]
+measure = "max_change"
+band    = [0, 0]
+
+[larger_court.doors_met]
+measure = "doors_met"
+band    = [17, 17]
+
+[larger_court.walk_held]
+measure = "walk_held"
+band    = [4, 4]
+
+[larger_court.senhal_road_m]
+measure = "senhal_road_m"
+band    = [348, 348]
+
+# ------------------------------------------------------------------------------------------ new_seed
+# Another land under the same text. Every instance moves with it; the ford moves with the stream
+# and the roads cross the new stream's course 25 times with nothing that owns the crossings. The
+# settlements stand where they were written, on ground that was not chosen for them, and nothing
+# else is said.
+
+[new_seed.built]
+measure = "built"
+band    = [1, 1]
+
+[new_seed.errors]
+measure = "errors"
+band    = [0, 0]
+
+[new_seed.warnings]
+measure = "warnings"
+band    = [25, 25]
+
+[new_seed.moved]
+measure = "moved"
+band    = [1511, 1511]
+
+[new_seed.unowned_crossing]
+measure = "unowned_crossing"
+band    = [25, 25]
+
+[new_seed.surface_gap]
+measure = "surface_gap"
+band    = [0, 0]
+
+[new_seed.max_change]
+measure = "max_change"
+band    = [0, 0]
+
+[new_seed.base_short]
+measure = "base_short"
+band    = [0, 0]
+
+[new_seed.foot_bare_dm]
+measure = "foot_bare_dm"
+band    = [0, 0]
+
+[new_seed.foot_max_mm]
+measure = "foot_max_mm"
+band    = [929, 929]
+
+[new_seed.buried_max_mm]
+measure = "buried_max_mm"
+band    = [399, 399]
+
+[new_seed.ways_wet_dm]
+measure = "ways_wet_dm"
+band    = [15, 15]
+
+[new_seed.ways_in_halls_dm]
+measure = "ways_in_halls_dm"
+band    = [0, 0]
+
+[new_seed.pieces_in_water]
+measure = "pieces_in_water"
+band    = [0, 0]
+
+[new_seed.doors_met]
+measure = "doors_met"
+band    = [17, 17]
+
+[new_seed.walk_held]
+measure = "walk_held"
+band    = [4, 4]
+
+[new_seed.east_road_m]
+measure = "east_road_m"
+band    = [232, 232]
+
+[new_seed.senhal_road_m]
+measure = "senhal_road_m"
+band    = [206, 206]
+
+# ------------------------------------------------------------------------------------------ no_ford
+# The ford taken away: the road crosses the beck with nothing that owns it, one warning; the
+# walker wades it.
+
+[no_ford.built]
+measure = "built"
+band    = [1, 1]
+
+[no_ford.errors]
+measure = "errors"
+band    = [0, 0]
+
+[no_ford.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[no_ford.unowned_crossing]
+measure = "unowned_crossing"
+band    = [1, 1]
+
+[no_ford.walk_pairs]
+measure = "walk_pairs"
+band    = [3, 3]
+
+[no_ford.walk_held]
+measure = "walk_held"
+band    = [3, 3]
+
+[no_ford.ways_wet_dm]
+measure = "ways_wet_dm"
+band    = [0, 0]
+
+[no_ford.removed]
+measure = "removed"
+band    = [0, 0]
+
+[no_ford.moved]
+measure = "moved"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ no_level
+# No plot under the court or the temple: the land as it lies. The temple's base stops 0.8 m short,
+# the court's halls stand 0.5 m apart in height, the yard wall's pieces 1.2 m.
+
+[no_level.built]
+measure = "built"
+band    = [1, 1]
+
+[no_level.errors]
+measure = "errors"
+band    = [0, 0]
+
+[no_level.warnings]
+measure = "warnings"
+band    = [4, 4]
+
+[no_level.plots]
+measure = "plots"
+band    = [0, 0]
+
+[no_level.base_short]
+measure = "base_short"
+band    = [4, 4]
+
+[no_level.foot_bare_dm]
+measure = "foot_bare_dm"
+band    = [1029, 1029]
+
+[no_level.foot_max_mm]
+measure = "foot_max_mm"
+band    = [1706, 1706]
+
+[no_level.court_floor_spread_mm]
+measure = "court_floor_spread_mm"
+band    = [499, 499]
+
+[no_level.yard_z_mm]
+measure = "yard_z_mm"
+band    = [1225, 1225]
+
+[no_level.moved]
+measure = "moved"
+band    = [311, 311]
+
+[no_level.doors_met]
+measure = "doors_met"
+band    = [17, 17]
+
+[no_level.walk_held]
+measure = "walk_held"
+band    = [4, 4]
+
+# ------------------------------------------------------------------------------------------ steep_court
+# Senhal written on the hillside west of the village: its plot would cut and bank 5.15 m, where
+# a plot may move the ground 3 m (`authority.max_change`, naming the plot). The build stops.
+
+[steep_court.built]
+measure = "built"
+band    = [0, 0]
+
+[steep_court.errors]
+measure = "errors"
+band    = [1, 1]
+
+[steep_court.warnings]
+measure = "warnings"
+band    = [3, 3]
+
+[steep_court.max_change]
+measure = "max_change"
+band    = [1, 1]
+
+[steep_court.unowned_crossing]
+measure = "unowned_crossing"
+band    = [3, 3]
+
+# ------------------------------------------------------------------------------------------ through_fane
+# The trail routed over the land alone: it goes through the temple (15.2 m of it inside the
+# temple's outline), and every piece in its verge is `place.keep_out`, 108.
+
+[through_fane.built]
+measure = "built"
+band    = [1, 1]
+
+[through_fane.errors]
+measure = "errors"
+band    = [0, 0]
+
+[through_fane.warnings]
+measure = "warnings"
+band    = [110, 110]
+
+[through_fane.keep_out]
+measure = "keep_out"
+band    = [108, 108]
+
+[through_fane.ways_in_halls_dm]
+measure = "ways_in_halls_dm"
+band    = [152, 152]
+
+[through_fane.plot_off_mm]
+measure = "plot_off_mm"
+band    = [0, 0]
+
+[through_fane.plot_lost]
+measure = "plot_lost"
+band    = [0, 0]
+
+[through_fane.moved]
+measure = "moved"
+band    = [367, 367]
+
+[through_fane.fane_path_m]
+measure = "fane_path_m"
+band    = [437, 437]
+
+[through_fane.walk_held]
+measure = "walk_held"
+band    = [4, 4]
+
+[through_fane.doors_met]
+measure = "doors_met"
+band    = [17, 17]
+
+# ------------------------------------------------------------------------------------------ shrine
+# A shrine of the timber kit set 2.1 m behind the temple, on a plot of its own: the two plots
+# overlap and the shrine's, later by name, holds the ground between them. `lay` laid the temple
+# against its own level; `check` reads the ground as it ended and says `plot_lost` of the temple,
+# naming the shrine's plot: the ground falls 1.259 m below the temple's floor, 0.359 m past its
+# 0.9 m base, along 15.4 m of its back wall.
+
+[shrine.built]
+measure = "built"
+band    = [1, 1]
+
+[shrine.errors]
+measure = "errors"
+band    = [0, 0]
+
+[shrine.warnings]
+measure = "warnings"
+band    = [3, 3]
+
+[shrine.plot_lost]
+measure = "plot_lost"
+band    = [1, 1]
+
+[shrine.added]
+measure = "added"
+band    = [64, 64]
+
+[shrine.moved]
+measure = "moved"
+band    = [0, 0]
+
+[shrine.plots]
+measure = "plots"
+band    = [3, 3]
+
+[shrine.halls]
+measure = "halls"
+band    = [16, 16]
+
+[shrine.foot_max_mm]
+measure = "foot_max_mm"
+band    = [1259, 1259]
+
+[shrine.foot_bare_dm]
+measure = "foot_bare_dm"
+band    = [154, 154]
+
+[shrine.buried_max_mm]
+measure = "buried_max_mm"
+band    = [255, 255]
+
+[shrine.plot_off_mm]
+measure = "plot_off_mm"
+band    = [539, 539]
+
+[shrine.doors_met]
+measure = "doors_met"
+band    = [18, 18]
+
+[shrine.walk_held]
+measure = "walk_held"
+band    = [4, 4]
+
+# ------------------------------------------------------------------------------------------ village_moved
+# Marrowick moved 40 m up the valley, ten numbers in three tables: the ways that end on its street
+# follow. Its houses step with steeper ground; the ground stands 0.7 m over a house's floor on its
+# uphill side, which nothing says.
+
+[village_moved.built]
+measure = "built"
+band    = [1, 1]
+
+[village_moved.errors]
+measure = "errors"
+band    = [0, 0]
+
+[village_moved.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[village_moved.moved]
+measure = "moved"
+band    = [833, 833]
+
+[village_moved.added]
+measure = "added"
+band    = [0, 0]
+
+[village_moved.removed]
+measure = "removed"
+band    = [0, 0]
+
+[village_moved.foot_max_mm]
+measure = "foot_max_mm"
+band    = [1432, 1432]
+
+[village_moved.foot_bare_dm]
+measure = "foot_bare_dm"
+band    = [0, 0]
+
+[village_moved.buried_max_mm]
+measure = "buried_max_mm"
+band    = [698, 698]
+
+[village_moved.base_short]
+measure = "base_short"
+band    = [0, 0]
+
+[village_moved.street_grade_pct]
+measure = "street_grade_pct"
+band    = [10, 10]
+
+[village_moved.east_road_m]
+measure = "east_road_m"
+band    = [71, 71]
+
+[village_moved.fane_path_m]
+measure = "fane_path_m"
+band    = [386, 386]
+
+[village_moved.doors_met]
+measure = "doors_met"
+band    = [17, 17]
+
+[village_moved.walk_held]
+measure = "walk_held"
+band    = [4, 4]

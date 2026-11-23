@@ -1,0 +1,22 @@
+# The ford taken away: one road from the village to the court, which crosses the beck where the
+# land sends it, with nothing that owns the crossing.
+[feature.rindle_ford]
+remove = true
+
+[feature.east_road]
+remove = true
+
+[feature.the_ford]
+remove = true
+
+[feature.at_ford]
+remove = true
+
+[feature.senhal_road]
+starts_at = "street.end"
+
+[step.reach.params]                           # the walk no longer names the ford
+reach = [
+  { profile = "walker", from = "marrowick", to = ["senhal_gate", "fane_foot"] },
+  { profile = "walker", from = "senhal_gate", to = ["fane_foot"] },
+]

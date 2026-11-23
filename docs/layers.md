@@ -157,29 +157,29 @@ Each archetype followed through the layers, and the holes that shows. Written by
 
 <!-- shows: begin -->
 
-Counted over 865 ledger rows, 57 kinds, 20 steps, 27 example worlds and 1007 conformance cases.
+Counted over 865 ledger rows, 58 kinds, 20 steps, 28 example worlds and 1007 conformance cases.
 
 | Archetype | Ledger rows that are ours: shown, partly, none | Chapters, with their cases | Kinds | Steps | Examples that use it |
 |---|---|---|---|---|---|
-| Field | 13, 5, 19 | fields 58, formulas 52 | 0 | 1 | 27 |
-| Shape | 3, 2, 5 | geometry 85 | 0 | 0 | 27 |
-| Asset | 13, 6, 28 | assets 87 | 0 | 0 | 17 |
-| Derivation | 10, 9, 28 | formulas 52, derived 33 | 2 | 1 | 18 |
+| Field | 13, 5, 19 | fields 58, formulas 52 | 0 | 1 | 28 |
+| Shape | 3, 2, 5 | geometry 85 | 0 | 0 | 28 |
+| Asset | 13, 6, 28 | assets 87 | 0 | 0 | 18 |
+| Derivation | 10, 9, 28 | formulas 52, derived 33 | 2 | 1 | 19 |
 | Simulation | 4, 1, 12 | derived 33, protocol 88 | 3 | 2 | 2 |
-| Profile | 14, 11, 10 | authority 57 | 18 | 0 | 19 |
-| Network | 8, 3, 12 | geometry 85, derived 33 | 5 | 1 | 18 |
+| Profile | 14, 11, 10 | authority 57 | 19 | 0 | 20 |
+| Network | 8, 3, 12 | geometry 85, derived 33 | 5 | 1 | 19 |
 | Area partition | 7, 13, 18 | geometry 85 | 6 | 0 | 3 |
 | Placement | 3, 0, 7 | rules 68 | 0 | 0 | 15 |
-| Linear placement | 6, 5, 13 | rules 68 | 3 | 4 | 8 |
+| Linear placement | 6, 5, 13 | rules 68 | 3 | 4 | 9 |
 | Scatter | 10, 13, 18 | rules 68 | 0 | 1 | 11 |
 | Recipe | 3, 7, 10 | rules 68 | 0 | 1 | 4 |
-| Grammar | 2, 5, 10 | protocol 88 | 10 | 4 | 7 |
+| Grammar | 2, 5, 10 | protocol 88 | 10 | 4 | 8 |
 | Representation switch | 5, 2, 11 | surfaces 92 | 11 | 0 | 8 |
-| Meeting | 22, 36, 38 | authority 57, surfaces 92, composition 87 | 14 | 1 | 14 |
-| Overlay | 5, 3, 6 | documents 76, identity 57 | 0 | 0 | 27 |
+| Meeting | 22, 36, 38 | authority 57, surfaces 92, composition 87 | 14 | 1 | 15 |
+| Overlay | 5, 3, 6 | documents 76, identity 57 | 0 | 0 | 28 |
 | Guidance | 1, 2, 61 | build 59 | 0 | 0 | 0 |
-| Measure | 7, 5, 18 | protocol 88, build 59 | 0 | 6 | 13 |
-| Markup | 3, 2, 7 | documents 76, build 59 | 4 | 0 | 27 |
+| Measure | 7, 5, 18 | protocol 88, build 59 | 0 | 6 | 14 |
+| Markup | 3, 2, 7 | documents 76, build 59 | 4 | 0 | 28 |
 | Delivery | 5, 6, 23 | build 59 | 0 | 1 | 1 |
 
 **Archetypes with no form in the engine:** Grammar, Guidance.
@@ -188,7 +188,7 @@ Counted over 865 ledger rows, 57 kinds, 20 steps, 27 example worlds and 1007 con
 
 **Steps that do in code what the engine has a form for:** `lib/building/row.py` (Linear placement, Grammar, 473 lines); `lib/building/pipe.py` (Linear placement, Grammar, Meeting, 533 lines); `lib/land/uplands.py` (Field, 445 lines); `lib/town/houses.py` (Recipe, 1150 lines); `lib/town/kit.py` (Linear placement, 629 lines); `lib/town/streets.py` (Network, 936 lines); `lib/vegetation/clumps.py` (Scatter, 346 lines); `lib/water/fill.py` (Derivation, 123 lines); `lib/ways/parapet.py` (Linear placement, 161 lines).
 
-**Concepts as data and as code:** 1786 lines of kinds, 13162 lines of steps (tests left out).
+**Concepts as data and as code:** 1831 lines of kinds, 13492 lines of steps (tests left out).
 
 **One library naming another's kinds:** `building` names `town.terrace`; `review` names `town.main_street`; `review` names `town.street`; `review` names `town.waterfront`; `review` names `ways.crossing`; `review` names `ways.trail`; `ways` names `water.beck`.
 

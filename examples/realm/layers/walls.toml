@@ -1,0 +1,14 @@
+# The walls layer: the steps that read the buildings the places layer wrote or returned.
+
+[step.lay]                                    # one call per building (lib/building/kinds.toml)
+when     = "generate"
+worker   = true
+for_each = "kind:building"
+command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+
+[step.check]
+when    = "lint"
+worker  = true
+checks  = ["lay", "rows", "courts"]
+command = ["python", "-m", "viasdk", "lib:building/check.py"]
+params  = { kits = ["structure/village", "structure/timber", "structure/yard", "structure/order"] }

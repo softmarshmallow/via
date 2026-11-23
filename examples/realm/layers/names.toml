@@ -1,0 +1,134 @@
+# The names layer: what a player's map names (lib/map), the walk a person must be able to make
+# (lib/review's reach lint), and where the realm is looked at (bookmarks). It changes no field.
+
+# ------------------------------------------------------------------------------------------ the map's names
+
+[feature.marrowick]
+kind  = "poi"
+on    = { ref = "street", t = 0.5 }
+label = "Marrowick"
+
+[feature.senhal_court]
+kind  = "poi"
+on    = { ref = "senhal_road", t = 1 }
+label = "Senhal"
+
+[feature.quillow_fane]
+kind  = "poi"
+on    = { ref = "fane_path", t = 1 }
+label = "Quillow Fane"
+
+[feature.the_ford]
+kind  = "poi"
+on    = { ref = "east_road", t = 1 }
+label = "Rindle Ford"
+
+[feature.village_ground]                      # the village: the ground round its street
+kind  = "area"
+where = "= if(dist('street', 40) < 28, 1, -1)"
+label = "Marrowick"
+
+[feature.fane_ground]                         # the temple's hilltop
+kind  = "area"
+where = "= if(dist('fane', 40) < 20, 1, -1)"
+label = "Quillow"
+
+# ------------------------------------------------------------------------------------------ the map
+
+[step.map]
+when    = "export"
+output  = "player_map"
+command = ["python", "-m", "viasdk", "lib:map/export.py"]
+
+[step.map.params]
+cell    = 1.0                                 # the realm's own resolution
+tile    = 32                                  # 32 m tiles: 24 by 20
+ways    = { road = "road", street = "street", trail = "trail", footpath = "path", doorway = "door" }
+water   = { beck = "stream" }
+floors  = { storey = "level", platform = "level" }
+doors   = { doorway = "sill_z" }
+links   = { flight = ["z0", "z1"] }
+walls   = ["structure"]
+regions = { area = "label" }
+labels  = { beck = "", ford = "", building = "", row = "", court = "", plot = "", yard = "", roof = "", footing = "" }
+
+# ------------------------------------------------------------------------------------------ the walk
+
+# From the village a walker reaches the ford, the court's gate and the temple's steps, and from
+# the court the temple: the realm is one place on foot. The walker is quay's (examples/quay).
+[step.reach]
+when    = "lint"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:review/reach.py"]
+
+[step.reach.params]
+reach = [
+  { profile = "walker", from = "marrowick", to = ["the_ford", "senhal_gate", "fane_foot"] },
+  { profile = "walker", from = "senhal_gate", to = ["fane_foot"] },
+]
+
+[step.reach.params.profiles.walker]
+grade = 0.5
+step  = 0.2
+width = 0.6
+wade  = 0.3
+reach = 2
+
+# ------------------------------------------------------------------------------------------ views
+
+[feature.look_realm]
+at = [400, 330]
+
+[feature.look_village]
+at = [364, 232]
+
+[feature.look_court]
+at = [672, 384]
+
+[feature.look_fane]
+at = [197, 513]
+
+[feature.over]                                # the whole realm, from over the sea
+kind       = "bookmark"
+at         = [400, 30]
+toward     = "look_realm"
+eye_height = 260
+
+[feature.in_marrowick]                        # in the street, from its west end
+kind   = "bookmark"
+on     = { ref = "street", t = 0.04 }
+toward = "look_village"
+
+[feature.over_marrowick]                      # the village from the south-east, above
+kind       = "bookmark"
+at         = [420, 190]
+toward     = "look_village"
+eye_height = 24
+
+[feature.at_ford]                             # on the road, short of the ford
+kind   = "bookmark"
+on     = { ref = "east_road", t = 0.75 }
+toward = "the_ford"
+
+[feature.at_senhal]                           # before the gate
+kind       = "bookmark"
+on         = { ref = "senhal_road", t = 0.97 }
+toward     = "look_court"
+eye_height = 3
+
+[feature.over_senhal]                         # the court from the south-west, above
+kind       = "bookmark"
+at         = [630, 330]
+toward     = "look_court"
+eye_height = 30
+
+[feature.at_fane]                             # below the steps
+kind   = "bookmark"
+on     = { ref = "fane_path", t = 0.97 }
+toward = "look_fane"
+
+[feature.over_fane]                           # the temple from the south-east, above
+kind       = "bookmark"
+at         = [235, 480]
+toward     = "look_fane"
+eye_height = 14
