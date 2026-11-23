@@ -170,9 +170,9 @@ The clear width is the plan's: two boxes' footprints, not their collision meshes
 Library code imports only viasdk and the standard library (R19b).
 """
 
-import json
 import math
 
+import viasdk
 from viasdk import RpcError
 
 DEPTH = 1000         # mm along a doorway from its inner end within which a piece stands beside it
@@ -991,15 +991,6 @@ def _list(col):
     return col.tolist() if hasattr(col, "tolist") else list(col)
 
 
-def _json(v):
-    if isinstance(v, str):
-        try:
-            return json.loads(v) if v else None
-        except ValueError:
-            return v
-    return v
-
-
 def read_features(step):
     out = []
     for kind, cols in (("storey", ["level"]), ("room", ["storey"]), ("flight", ["z0", "z1"]),
@@ -1013,7 +1004,7 @@ def read_features(step):
         names = _list(fl.get("name", []))
         for f, name in enumerate(names):
             pts = [(int(v[0]), int(v[1])) for v in _list(fl.rings(f)[0][0])]
-            attrs = {c: _list(fl[c])[f] for c in cols if c in fl and (f"{c}?" not in fl or _list(fl[f"{c}?"])[f])}
+            attrs = viasdk.attrs(fl, f, cols)
             out.append({"name": name, "kind": kind, "ring": pts, "path": pts, "attrs": attrs})
     return out
 
@@ -1032,17 +1023,8 @@ def read_meetings(step):
 
 
 def read_kits(step, taxons):
-    rows = []
-    for taxon in taxons:
-        t = step.pack(select="@" + taxon, columns=["bounds", "params", "shared"])
-        for r, i in enumerate(_list(t.get("id", []))):
-            tags = _json(_list(t["tags"])[r]) if "tags" in t else []
-            rows.append({"id": i, "taxon": taxon,
-                         "bounds": [int(v) for v in _list(_list(t["bounds"])[r])] if "bounds" in t else None,
-                         "params": (_json(_list(t["params"])[r]) or {}) if "params" in t else {},
-                         "shared": (_json(_list(t["shared"])[r]) or {}) if "shared" in t else {},
-                         "tags": tags if isinstance(tags, list) else [tags]})
-    return rows
+    """Every piece of the kits `taxons` names, in that order (viasdk.kit)."""
+    return [r for taxon in taxons for r in viasdk.kit(step, taxon)]
 
 
 def read_pieces(step, taxons, kit_rows):

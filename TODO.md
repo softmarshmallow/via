@@ -1727,7 +1727,8 @@ open, and its place here is its destination.
       (From the list before the rewrite, Assets and buildings; was -> M5.)
 - [ ] **What a kit states, where it is not yet read.** lib/building lays by a kit's
   `defaults.shared` (R66, K6: `wall`, `stair`, `door`; `module` and `storey` are checked). Left:
-  lib/town's rows read each piece's pitch alone (F4 of docs/plan-fixes.md); the kits of `station`, `college`, `market` and `quay` state nothing
+  lib/town's rows read each piece's pitch alone and no `shared` (F4 of docs/plan-fixes.md
+  moved its kit read into the SDK; reading `shared` before the run lays by it costs its reuse); the kits of `station`, `college`, `market` and `quay` state nothing
   (`kit_unstated`, info). Lesson: the first statement written for the plain kit was wrong (one
   storey height of two) and the check caught it: a stated fact is only worth having with the
   check that holds the pieces to it.

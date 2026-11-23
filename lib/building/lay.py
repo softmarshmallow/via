@@ -451,9 +451,9 @@ Library code imports only viasdk and the standard library (R19b).
 """
 
 import hashlib
-import json
 import math
 
+import viasdk
 from viasdk import RpcError
 
 CLEAR = 100          # mm between a flight and the wall, and between two lanes
@@ -3029,15 +3029,6 @@ def _list(col):
     return col.tolist() if hasattr(col, "tolist") else list(col)
 
 
-def _json(v):
-    if isinstance(v, str):
-        try:
-            return json.loads(v) if v else None
-        except ValueError:
-            return v
-    return v
-
-
 def read_building(step, name):
     fl = step.features(select=[name], columns=ATTRS)
     if len(fl) != 1 or int(_list(fl["geometry"])[0]) != 2:
@@ -3046,11 +3037,7 @@ def read_building(step, name):
     if len(pieces) != 1 or len(pieces[0]) != 1:
         raise ParamError("region", f"`{name}` is not one ring", "write the building as one ring with no hole")
     ring = [(int(v[0]), int(v[1])) for v in _list(pieces[0][0])]
-    attrs = {}
-    for a in ATTRS:
-        if a in fl and (f"{a}?" not in fl or _list(fl[f"{a}?"])[0]):
-            attrs[a] = _json(_list(fl[a])[0])
-    return ring, attrs
+    return ring, viasdk.attrs(fl, 0, ATTRS)
 
 
 def past_extent(ring, grid):
@@ -3071,15 +3058,11 @@ def past_extent(ring, grid):
 
 
 def read_ground(step, ring):
-    """The mean terrain height over the outline's posts and vertices (rule 2), metres."""
-    try:
-        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
-    except (LookupError, RpcError):
-        return 0.0
+    """The mean terrain height over the outline's posts and vertices (rule 2), metres; 0 in a world
+    with no surface field."""
     pts = posts_in(ring, step.grid)
-    h = [float(v) for v in _list(step.eval(f"= f('{surface.name}')", x=[p[0] for p in pts],
-                                           y=[p[1] for p in pts]))]
-    return sum(h) / len(h)
+    h = viasdk.ground(step, [p[0] for p in pts], [p[1] for p in pts])
+    return sum(h) / len(h) if h else 0.0
 
 
 def foot_word(note):
@@ -3094,32 +3077,19 @@ def foot_word(note):
 def read_foot(step, ring):
     """The terrain along the outline (rule 13): [(x mm, y mm, metres)] every `FOOT_STEP` along
     each side, from half a step in. Empty where the world has no surface field."""
-    try:
-        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
-    except (LookupError, RpcError):
-        return []
     pts = []
     for e in edges(ccw(ring)):
         n = max(1, int(round(e["L"] / FOOT_STEP)))
         pts += [rnd(local(e, (i + 0.5) * e["L"] / n, 0)) for i in range(n)]
-    h = _list(step.eval(f"= f('{surface.name}')", x=[p[0] for p in pts], y=[p[1] for p in pts]))
-    return [(p[0], p[1], float(v)) for p, v in zip(pts, h)]
+    h = viasdk.ground(step, [p[0] for p in pts], [p[1] for p in pts])
+    return [(p[0], p[1], v) for p, v in zip(pts, h)] if h is not None else []
 
 
 def read_kit(step, taxon):
+    """The kit's pieces (viasdk.kit), None where the building names none."""
     if not taxon:
         return None
-    t = step.pack(select="@" + taxon, columns=["bounds", "params", "shared"])
-    ids = _list(t.get("id", []))
-    rows = []
-    for r, i in enumerate(ids):
-        tags = _json(_list(t["tags"])[r]) if "tags" in t else []
-        b = _list(t["bounds"])[r] if "bounds" in t else None
-        rows.append({"id": i, "tags": tags if isinstance(tags, list) else [tags],
-                     "bounds": [int(v) for v in _list(b)] if b is not None else None,
-                     "params": _json(_list(t["params"])[r]) or {} if "params" in t else {},
-                     "shared": _json(_list(t["shared"])[r]) or {} if "shared" in t else {}})
-    return rows
+    return viasdk.kit(step, taxon)
 
 
 def write(step, out):

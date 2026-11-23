@@ -171,6 +171,12 @@ class FeatureList(dict):
         rs = [r for piece in self.rings(f) for r in piece]
         return np.concatenate(rs) if rs else np.zeros((0, 2), dtype="<i4")
 
+    def attrs(self, f, names=None):
+        """The attributes of feature ``f`` by name, past their ``<name>?`` null columns, JSON
+        decoded (viasdk.attrs)."""
+        from ._kit import attrs
+        return attrs(self, f, names)
+
     def metres(self):
         """Every vertex in metres, as doubles."""
         import numpy as np
@@ -284,6 +290,16 @@ class Step:
         params = {"select": select if isinstance(select, str) else list(select),
                   "columns": columns if isinstance(columns, str) else list(columns)}
         return table(self.call("pack.query", **params), self.objects)
+
+    def kit(self, taxon, columns=("bounds", "params", "shared")):
+        """pack.query of one taxon's pieces, each a decoded dict (viasdk.kit)."""
+        from ._kit import kit
+        return kit(self, taxon, columns)
+
+    def ground(self, x, y, view="full"):
+        """The terrain at each point, metres; None in a world with no surface field (viasdk.ground)."""
+        from ._kit import ground
+        return ground(self, x, y, view)
 
     def meetings(self):
         """surface.meetings: every meeting of the finished build (surfaces.md 2.4), a table ordered

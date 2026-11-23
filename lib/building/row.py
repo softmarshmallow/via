@@ -79,8 +79,9 @@ Library code imports only viasdk and the standard library (R19b).
 """
 
 import hashlib
-import json
 import math
+
+import viasdk
 
 FIT = 5              # mm a row may differ from its frontage and still close
 SHARE = 1000         # mm of side two buildings share for it to be a party wall
@@ -368,15 +369,6 @@ def _list(col):
     return col.tolist() if hasattr(col, "tolist") else list(col)
 
 
-def _json(v):
-    if isinstance(v, str):
-        try:
-            return json.loads(v) if v else None
-        except ValueError:
-            return v
-    return v
-
-
 def read_rows(step):
     try:
         fl = step.features(select="kind:row", columns=ATTRS)
@@ -385,25 +377,14 @@ def read_rows(step):
     out = []
     for f, name in enumerate(_list(fl.get("name", []))):
         pts = [(int(v[0]), int(v[1])) for v in _list(fl.rings(f)[0][0])]
-        attrs = {}
-        for a in ATTRS:
-            if a in fl and (f"{a}?" not in fl or _list(fl[f"{a}?"])[f]):
-                attrs[a] = _json(_list(fl[a])[f])
+        attrs = viasdk.attrs(fl, f, ATTRS)
         out.append((name, pts, attrs))
     return out
 
 
 def read_kit(step, taxon):
-    t = step.pack(select="@" + taxon, columns=["bounds", "params", "shared"])
-    rows = []
-    for r, i in enumerate(_list(t.get("id", []))):
-        tags = _json(_list(t["tags"])[r]) if "tags" in t else []
-        b = _list(t["bounds"])[r] if "bounds" in t else None
-        rows.append({"id": i, "tags": tags if isinstance(tags, list) else [tags],
-                     "bounds": [int(v) for v in _list(b)] if b is not None else None,
-                     "params": _json(_list(t["params"])[r]) or {} if "params" in t else {},
-                     "shared": _json(_list(t["shared"])[r]) or {} if "shared" in t else {}})
-    return rows
+    """The kit's pieces (viasdk.kit)."""
+    return viasdk.kit(step, taxon)
 
 
 def generate(step):

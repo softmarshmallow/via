@@ -85,9 +85,9 @@ Codes are `step.<id>.<code>`: `params` (error: a court's attribute, or a kit wit
 Library code imports only viasdk and the standard library (R19b).
 """
 
-import json
 import math
 
+import viasdk
 from viasdk import RpcError
 
 FIT = 5              # mm two outlines may overlap and still be said to touch
@@ -415,15 +415,6 @@ def _list(col):
     return col.tolist() if hasattr(col, "tolist") else list(col)
 
 
-def _json(v):
-    if isinstance(v, str):
-        try:
-            return json.loads(v) if v else None
-        except ValueError:
-            return v
-    return v
-
-
 def read_courts(step):
     try:
         fl = step.features(select="kind:court", columns=ATTRS)
@@ -432,10 +423,7 @@ def read_courts(step):
     out = []
     for f, name in enumerate(_list(fl.get("name", []))):
         pt = _list(fl.rings(f)[0][0])[0]
-        attrs = {}
-        for a in ATTRS:
-            if a in fl and (f"{a}?" not in fl or _list(fl[f"{a}?"])[f]):
-                attrs[a] = _json(_list(fl[a])[f])
+        attrs = viasdk.attrs(fl, f, ATTRS)
         out.append((name, (int(pt[0]), int(pt[1])), attrs))
     return out
 
@@ -475,10 +463,6 @@ def posts_in(ring, grid):
 def read_level(step, ring):
     """The mean of the land under a plot (rule 9), metres to the millimetre; 0 in a world with
     no terrain."""
-    try:
-        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
-    except (LookupError, RpcError):                # as lay.py's read_ground: no surface field
-        return 0.0
     pts = posts_in(ring, step.grid)
     # A plot reaches 1.5 m past its halls, and may reach past the world's extent, where the
     # ground cannot be read: its level is the land inside (F2's review: it raised). A hall past
@@ -486,21 +470,13 @@ def read_level(step, ring):
     ext = (step.grid or {}).get("extent_mm")
     if ext:
         pts = [p for p in pts if ext[0] <= p[0] <= ext[2] and ext[1] <= p[1] <= ext[3]] or pts
-    h = [float(v) for v in _list(step.eval(f"= f('{surface.name}')", x=[p[0] for p in pts], y=[p[1] for p in pts]))]
-    return round(sum(h) / len(h), 3)
+    h = viasdk.ground(step, [p[0] for p in pts], [p[1] for p in pts])
+    return round(sum(h) / len(h), 3) if h else 0.0       # 0 in a world with no surface field
 
 
 def read_kit(step, taxon):
-    t = step.pack(select="@" + taxon, columns=["bounds", "params", "shared"])
-    rows = []
-    for r, i in enumerate(_list(t.get("id", []))):
-        tags = _json(_list(t["tags"])[r]) if "tags" in t else []
-        b = _list(t["bounds"])[r] if "bounds" in t else None
-        rows.append({"id": i, "tags": tags if isinstance(tags, list) else [tags],
-                     "bounds": [int(v) for v in _list(b)] if b is not None else None,
-                     "params": _json(_list(t["params"])[r]) or {} if "params" in t else {},
-                     "shared": _json(_list(t["shared"])[r]) or {} if "shared" in t else {}})
-    return rows
+    """The kit's pieces (viasdk.kit)."""
+    return viasdk.kit(step, taxon)
 
 
 def generate(step):

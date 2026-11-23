@@ -85,9 +85,9 @@ since a row's line says where houses may stand, not a length they must close.
 Library code imports only viasdk and the standard library (R19b).
 """
 
-import json
 import math
 
+import viasdk
 from viasdk import RpcError
 
 CORNER_TURN = 10.0                                    # degrees a vertex turns, at least, for a corner
@@ -454,32 +454,15 @@ def _list(col):
     return col.tolist() if hasattr(col, "tolist") else list(col)
 
 
-def _json(v):
-    if isinstance(v, (bytes, str)):
-        try:
-            return json.loads(v)
-        except ValueError:
-            return v
-    return v
-
-
 # ------------------------------------------------------------------------------------- the step
 
 
 def read_kit(step, taxon):
-    t = step.pack(select="@" + taxon, columns=["bounds", "params", "sink", "footprint"])
-    ids = _list(t.get("id", []))
-    rows = []
-    for r, i in enumerate(ids):
-        tags = _json(_list(t["tags"])[r]) if "tags" in t else []
-        b = _list(t["bounds"])[r] if "bounds" in t else None
-        rows.append({"id": str(i), "tags": tags if isinstance(tags, list) else [tags],
-                     "bounds": [int(v) for v in _list(b)] if b is not None else None,
-                     "params": (_json(_list(t["params"])[r]) or {}) if "params" in t else {},
-                     # `sink` is a height: f64 metres, not millimetres (protocol.md 3.3).
-                     "sink": float(_list(t["sink"])[r]) if "sink" in t else 0.0,
-                     "footprint": (_json(_list(t["footprint"])[r]) or []) if "footprint" in t else []})
-    return kit_pieces(rows)
+    """The kit's pieces (viasdk.kit; `sink` is a height, f64 metres, protocol.md 3.3) as
+    `kit_pieces` reads them. Not `shared`: a read is part of the step's trace, and reading what
+    the run lays by none of would re-run it whenever a kit's statement changed (F4's review).
+    It is read when the run lays by it (TODO.md, lib/town)."""
+    return kit_pieces(viasdk.kit(step, taxon, columns=("bounds", "params", "sink", "footprint")))
 
 
 def _field(step, role):

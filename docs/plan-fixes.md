@@ -108,3 +108,17 @@ Changed so far:
   also found a posts bay's variant refused when only one of the two stated its pitch (the post
   is now added before a variant is matched, in `lay` and in `check`), a door of another storey's
   group given the post's width (now only the post's own group), and a hip's message wording.
+- **F4, 2026-11-24.** `viasdk.kit`, `viasdk.attrs` and `viasdk.ground` (also `step.kit`,
+  `FeatureList.attrs`, `step.ground`), built on the step's own reads so the libraries' test fakes
+  serve. lib/building's five steps and lib/town's kit run read through them; the six `_json`
+  copies are gone. Not met of the row: lib/town reads no `shared` (reading what it lays by none
+  of cost the run its reuse whenever a kit's statement changed, F4's review: read when it lays
+  by it), the SDK gives `shared` per piece and each library picks the first, and two field reads
+  at points stay each library's own (below). Not done: ground read at points for a field other than the surface (check.py's
+  `read_along` takes any selector; lib/town's `_field` folds several fields by `max`), each its
+  own and left so. The engine carries the SDK, so its binary changed: the conformance suite runs
+  again.
+  The review found the town run re-running for a `shared` it did not use (taken out), the
+  `head` view not asked of the surface field (a step that writes the surface could not use
+  `ground`), `kit` taking a string column letter by letter, `class` counted as an attribute: all
+  mended, with tests of the methods.

@@ -64,6 +64,25 @@ def lint(step):
 `examples/ford` has lanes and no road, so there this lint finds nothing: try it with
 `select="kind:lane"` and a small `limit` (`0.01` warns on both lanes).
 
+## Three reads every library wrote
+
+Plumbing, not policy: each is one engine read, decoded (`viasdk/_kit.py`; the fix plan's F4,
+where lib/building and lib/town had six, five and six copies of them).
+
+```python
+pieces = step.kit("structure/plain")          # pack.query of a taxon's pieces: id, taxon, tags,
+                                              # bounds (mm), params, shared, decoded
+pieces = step.kit("x", columns=("bounds", "sink", "footprint"))
+fl = step.features(select=["hall"], columns=["storeys", "doors"])
+a = fl.attrs(0, ["storeys", "doors"])         # past each `<name>?` null column, JSON decoded
+z = step.ground([0, 1000], [0, 0])            # the terrain at points (mm), metres; None: no terrain
+```
+
+Each is also a function, `viasdk.kit(step, taxon)`, `viasdk.attrs(fl, f, names)` and
+`viasdk.ground(step, x, y)`, built on `step.pack`, `step.features`, `step.fields` and `step.eval`,
+so a test's fake step that answers those serves. What a kit's `shared` table means, and what two
+of them among one kit's pieces mean, stays the library's.
+
 ## What bites
 
 - **Units.** Feature geometry is millimetres, in and out: `step.features(...).points(f)` gives

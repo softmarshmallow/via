@@ -529,5 +529,81 @@ class Version(unittest.TestCase):
         self.assertEqual(viasdk.__version__.split(".")[0], "1")
 
 
+class KitReads(unittest.TestCase):
+    """viasdk.kit, attrs and ground (the fix plan's F4): what six libraries each wrote."""
+
+    class Fake:
+        def __init__(self, surface=True):
+            self.surface, self.asked = surface, []
+
+        def pack(self, select, columns=()):
+            self.asked.append((select, list(columns)))
+            return {"id": ["bay", "post"], "tags": ['["role:wall"]', '["role:post", "storey:ground"]'],
+                    "bounds": [[-1500, -150, 0, 1500, 150, 3000], [-150, -150, 0, 150, 150, 3000]],
+                    "params": ['{"pitch": 3.0}', ""], "shared": ['{"module": 3.0}', '{"module": 3.0}'],
+                    "sink": [0.2, 0.0]}
+
+        def fields(self, names, **kw):
+            if not self.surface:
+                raise LookupError("no surface")
+
+            class F(list):
+                name = "height"
+            return [F()]
+
+        def eval(self, formula, x, y):
+            assert formula == "= f('height')"
+            return [10.0 + v / 1000 for v in x]
+
+    def test_a_kit_is_its_pieces_decoded(self):
+        from viasdk import kit
+        s = self.Fake()
+        rows = kit(s, "structure/plain")
+        self.assertEqual(s.asked, [("@structure/plain", ["bounds", "params", "shared"])])
+        self.assertEqual(rows[0], {"id": "bay", "taxon": "structure/plain", "tags": ["role:wall"],
+                                   "bounds": [-1500, -150, 0, 1500, 150, 3000], "params": {"pitch": 3.0},
+                                   "shared": {"module": 3.0}})
+        self.assertEqual(rows[1]["params"], {})
+        rows = kit(s, "x", columns=("sink", "footprint"))
+        self.assertEqual((rows[0]["sink"], rows[0]["footprint"]), (0.2, []))
+
+    def test_attributes_past_their_null_columns(self):
+        from viasdk import attrs
+        fl = {"name": ["a", "b"], "geometry": [3, 3], "storeys": [2, 0], "storeys?": [1, 0],
+              "doors": ['[{"side": 0}]', ""], "kit": ["k", "k"]}
+        self.assertEqual(attrs(fl, 0), {"storeys": 2, "doors": [{"side": 0}], "kit": "k"})
+        self.assertEqual(attrs(fl, 1, ["storeys", "kit"]), {"kit": "k"})
+
+    def test_the_ground_under_points(self):
+        from viasdk import ground
+        self.assertEqual(ground(self.Fake(), [0, 1000], [0, 0]), [10.0, 11.0])
+        self.assertEqual(ground(self.Fake(), [], []), [])
+        self.assertIsNone(ground(self.Fake(surface=False), [0], [0]))
+
+    def test_the_head_view_is_asked_of_the_field_too(self):
+        """F4's review: a step that returns rows on the surface reads it in its head view."""
+        from viasdk import ground, kit
+
+        class Head(self.Fake):
+            def fields(self, names, **kw):
+                self.asked.append(("fields", kw.get("view")))
+                return super().fields(names, **kw)
+
+            def eval(self, formula, x, y, view="full"):
+                self.asked.append(("eval", view))
+                return super().eval(formula, x, y)
+        s = Head()
+        ground(s, [0], [0], view="head")
+        self.assertEqual(s.asked, [("fields", "head"), ("eval", "head")])
+        self.assertEqual(kit(self.Fake(), "x", columns="bounds")[0]["bounds"], [-1500, -150, 0, 1500, 150, 3000])
+
+    def test_the_methods_are_the_functions(self):
+        from viasdk import FeatureList, Step
+        fl = FeatureList({"name": ["a"], "geometry": [3], "class": ["x"], "kit": ["k"]})
+        self.assertEqual(fl.attrs(0), {"kit": "k"})
+        for m in ("kit", "ground"):
+            self.assertTrue(callable(getattr(Step, m)))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -87,9 +87,9 @@ Diagnostics: `params` (error; the pipe is not returned), `pipe_open`, `support_o
 `support_none` and `pipes` (infos; `pipes` is what was returned).
 """
 
-import json
 import math
 
+import viasdk
 from viasdk import RpcError
 
 FIT = 5              # mm a leg may be longer than its pieces and still close
@@ -400,15 +400,6 @@ def _list(col):
     return col.tolist() if hasattr(col, "tolist") else list(col)
 
 
-def _json(v):
-    if isinstance(v, str):
-        try:
-            return json.loads(v) if v else None
-        except ValueError:
-            return v
-    return v
-
-
 def read_pipes(step, name=None):
     """Every pipe, or the one a `for_each` call is for: [(name, first point mm, attributes)]."""
     try:
@@ -418,34 +409,19 @@ def read_pipes(step, name=None):
     out = []
     for f, name in enumerate(_list(fl.get("name", []))):
         pt = _list(fl.rings(f)[0][0])[0]
-        attrs = {}
-        for a in ATTRS:
-            if a in fl and (f"{a}?" not in fl or _list(fl[f"{a}?"])[f]):
-                attrs[a] = _json(_list(fl[a])[f])
+        attrs = viasdk.attrs(fl, f, ATTRS)
         out.append((name, (int(pt[0]), int(pt[1])), attrs))
     return out
 
 
 def read_kit(step, taxon):
-    t = step.pack(select="@" + taxon, columns=["bounds", "params", "shared"])
-    rows = []
-    for r, i in enumerate(_list(t.get("id", []))):
-        tags = _json(_list(t["tags"])[r]) if "tags" in t else []
-        b = _list(t["bounds"])[r] if "bounds" in t else None
-        rows.append({"id": i, "tags": tags if isinstance(tags, list) else [tags],
-                     "bounds": [int(v) for v in _list(b)] if b is not None else None,
-                     "params": _json(_list(t["params"])[r]) or {} if "params" in t else {},
-                     "shared": _json(_list(t["shared"])[r]) or {} if "shared" in t else {}})
-    return rows
+    """The kit's pieces (viasdk.kit)."""
+    return viasdk.kit(step, taxon)
 
 
 def read_ground(step, pts):
     """The terrain at each point (mm), metres; None where the world has no surface field."""
-    try:
-        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
-    except (LookupError, RpcError):
-        return None
-    return [float(v) for v in _list(step.eval(f"= f('{surface.name}')", x=[p[0] for p in pts], y=[p[1] for p in pts]))]
+    return viasdk.ground(step, [p[0] for p in pts], [p[1] for p in pts])
 
 
 def write(step, out, section):
