@@ -68,7 +68,7 @@ taxon  = "structure/plain"
 tags   = ["role:corner_in"]
 params = { reach = 1.2 }
 pivot  = "origin"
-footprint = [[-1.35, -0.15], [0.15, -0.15], [0.15, 1.35], [-0.15, 1.35], [-0.15, 0.15], [-1.35, 0.15]]   # the L, not its box
+footprint = "plan"                # the ground it covers, measured from the model (assets.md 3.4; the fix plan's F5)
 
 # The door: a frame one half bay wide, for a doorway 1.4 m wide and the 0.1 m `lay` leaves.
 [asset.door]

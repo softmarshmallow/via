@@ -1,0 +1,10 @@
+# On a primitive `footprint = "plan"` is its own footprint: a cylinder's round one.
+[asset.post]
+primitive = "cylinder"
+size      = [1, 1, 3]
+footprint = "plan"
+
+[asset.crate]
+primitive = "box"
+size      = [1, 1, 1]
+plan      = 3

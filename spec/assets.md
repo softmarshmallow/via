@@ -192,7 +192,8 @@ held on the integer millimetre lattice (R24).
 | `triangles` | measured (model, 3.2); fixed (primitive, section 6); declared (engine-made) | integer | Triangles in the main model, or of the primitive or engine-made asset. Budgets count this number. |
 | `detail_triangles` | measured (model with `detail`) | list of integers | Triangles in each `detail` copy, in `detail`'s order. |
 | `origin` | measured (model); `[0, 0, 0]` (primitive, engine-made) | 3 lengths | Where the model's own origin lies in the asset frame: model origin minus pivot, `[x, y, z]`. |
-| `footprint` | measured, or declared to override | list of points | The ground the asset claims, in plan. Measured: the rectangle of `bounds` in plan, counter-clockwise from `[x0, y0]` (section 6 for round primitives). Declare it when the claim is not the box (a trunk under a canopy, the ground a kit piece owns). |
+| `footprint` | measured, or declared to override | list of points | The ground the asset claims, in plan. Measured: the rectangle of `bounds` in plan, counter-clockwise from `[x0, y0]` (section 6 for round primitives). Declare it when the claim is not the box (a trunk under a canopy, the ground a kit piece owns); `footprint = "plan"` declares it as the outer ring of the measured `plan` (3.4), for a piece whose claim is the ground it covers (an L-shaped corner). |
+| `plan` | measured (model, 3.4), where asked | list of rings | What the model covers in plan: the cells of a lattice (3.4) under its triangles, traced as rings in the asset frame, outer counter-clockwise, holes clockwise. Measured only for an asset that asks, with `plan = true` (on the asset, or in its taxon's `defaults`, so a kit asks once) or `footprint = "plan"`, and written only where it is not the rectangle of `bounds`: a tree's canopy would be hundreds of points no one reads, and every other asset's facts are as before. A `plan` that is not true or false is `doc.type`. The core places nothing by it; a library reads it (`pack.query`, column `plan`) to know what a piece covers (a corner turned the wrong way, a bevel left open). |
 | `front`, `up` | declared (model) | string | Model axes, 2.3. Default `"+z"`, `"+y"`. |
 | `pivot` | declared (model) | string | The rule that puts the pivot: `"base_centre"` (default), `"base_corner"`, `"origin"`. |
 | `solidity` | declared | string | `"solid"` (default), `"passable"` (M5) or `"none"`. `passable` claims the footprint exactly as `solid` does; only a walk reads the difference (`surfaces.md` 4.4). See below. |
@@ -395,6 +396,26 @@ fact is the main model's.
   was likely exported with another origin and would shift when the engine switches to it. The 1 mm
   limit is ours.
 
+### 3.4 Measuring the plan
+
+The plan is measured from the main model's triangles as 3.1 reaches them, in the asset frame's axes.
+A lattice of square cells of side `c = max(10, ceil(max(x1 - x0, y1 - y0) / 512))` millimetres is
+laid from `[x0, y0]` of `bounds` (for an asset that asks, 2.4); a cell is covered when a triangle of positive area in plan
+overlaps its inside. The covered cells are traced into rings along the cells' edges, a vertex where
+the outline turns, a cell edge past `x1` or `y1` held to it. Where every cell is covered the plan is
+the rectangle of `bounds` and is not written; where no triangle has area in plan (a model of
+vertical faces) none is. A cell partly covered counts whole, so an edge off the lattice is held
+outward by up to one cell (10 mm on a piece up to 5 m, about 100 mm at 50 m): two pieces flush in
+their models may claim a cell of each other's ground. Cells that touch only at a corner are apart:
+a model of two such pieces is two rings, and a hole that meets the outside at a corner leaves the
+outer ring touching itself there. `footprint = "plan"` takes the plan only where it is one simple
+ring (else `asset.bad_footprint`, to declare the footprint as points), measures it whatever
+`plan` says, and on a primitive or engine-made asset is its own footprint (section 6); any other
+word is `asset.bad_footprint`. The cell is ours: fine enough for a bevel of a few centimetres on a piece a
+metre wide (Kenney's corner, K10), and at most 512 cells a side, so a large model measures in
+bounded time. A declared `footprint = "plan"` on a model with no written plan is its `bounds`
+rectangle.
+
 ## 4. The facts file (M2)
 
 The facts that decide where and how an instance stands are kept, per model asset, in the pack's
@@ -478,7 +499,7 @@ facts file.
 | A used asset the facts file lacks | `asset.unaccepted` (info) | Builds. |
 | Any of `bounds`, `origin`, `footprint`, `front`, `up`, `pivot`, `solidity`, `sink`, `max_relief`, `mounts` | `asset.revised` (warning), one per asset | Builds with the new facts. Lists each fact old and new, then every instance of the asset in this build. |
 | `taxon` or `tags`, and no fact of the row above | `asset.refiled` (info) | Builds. What a selection now picks shows in the change report as swaps. |
-| Only `files`, `triangles`, `detail_triangles`, `collision`, `colour`, `params` or `shared` | `asset.remodelled` (info), with old and new triangles | Builds. Nothing moves by the core's hand: a geometry-only revision passes, and a step that reads `params` or `shared` runs again by its own trace (`protocol.md` 4.4). |
+| Only `files`, `triangles`, `detail_triangles`, `plan`, `collision`, `colour`, `params` or `shared` | `asset.remodelled` (info), with old and new triangles | Builds. Nothing moves by the core's hand: a geometry-only revision passes, and a step that reads `params` or `shared` runs again by its own trace (`protocol.md` 4.4). |
 | An unreadable or malformed facts file | `pack.bad_facts` (error) | Stops. Hint: delete it and run `via pack accept`. |
 
 - The build uses the current files and text for every result. Outside stand-ins (section 9), the

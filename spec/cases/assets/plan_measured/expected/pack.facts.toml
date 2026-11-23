@@ -1,0 +1,63 @@
+# Written by via pack accept. Do not edit.
+
+[asset.box]
+bounds = [-1, -0.5, 0, 1, 0.5, 1]
+origin = [1, -0.5, 0]
+footprint = [[-1, -0.5], [1, -0.5], [1, 0.5], [-1, 0.5]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+tags = []
+files = { "box.glb" = "f785485a0493188a3895a6d17aaae8e51752e4edf3f6e081042c96b673ad9460" }
+
+[asset.l]
+bounds = [-1, -1, 0, 1, 1, 1]
+origin = [1, -1, 0]
+footprint = [[-1, -1], [1, -1], [1, 1], [-1, 1]]
+plan = [[[-1, -1], [1, -1], [1, 1], [0, 1], [0, 0], [-1, 0]]]
+triangles = 24
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+tags = []
+files = { "l.glb" = "43776269d8e6891a31341cc6c8d0787c0fb1d59d9824d0775486e89099d924fc" }
+
+[asset.l_ground]
+bounds = [-1, -1, 0, 1, 1, 1]
+origin = [1, -1, 0]
+footprint = [[-1, -1], [1, -1], [1, 1], [0, 1], [0, 0], [-1, 0]]
+plan = [[[-1, -1], [1, -1], [1, 1], [0, 1], [0, 0], [-1, 0]]]
+triangles = 24
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+tags = []
+files = { "l.glb" = "43776269d8e6891a31341cc6c8d0787c0fb1d59d9824d0775486e89099d924fc" }
+
+[asset.quiet]
+bounds = [-1, -1, 0, 1, 1, 1]
+origin = [1, -1, 0]
+footprint = [[-1, -1], [1, -1], [1, 1], [-1, 1]]
+triangles = 24
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+tags = []
+files = { "l.glb" = "43776269d8e6891a31341cc6c8d0787c0fb1d59d9824d0775486e89099d924fc" }

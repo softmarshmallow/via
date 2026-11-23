@@ -1,0 +1,4 @@
+# Two blocks that meet only at a corner: their plan is two rings, and no one footprint.
+[asset.two]
+file      = "two.glb"
+footprint = "plan"

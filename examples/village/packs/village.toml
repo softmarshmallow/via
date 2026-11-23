@@ -84,7 +84,7 @@ taxon  = "structure/village"
 tags   = ["role:roof_valley"]
 params = { span = 3.3, reach = 1.2 }
 pivot  = "origin"
-footprint = [[-1.2, -3.3], [3.3, -3.3], [3.3, 1.2], [0, 1.2], [0, 0], [-1.2, 0]]   # the two slopes and the quarter between
+footprint = "plan"                # the ground it covers, measured from the model (assets.md 3.4; the fix plan's F5)
 
 # The inside corner of an L's walls: the notch and 1.2 m of each wall, placed by the notch's middle.
 [asset.corner_in]
@@ -93,7 +93,7 @@ taxon  = "structure/village"
 tags   = ["role:corner_in"]
 params = { reach = 1.2 }
 pivot  = "origin"
-footprint = [[-1.35, -0.15], [0.15, -0.15], [0.15, 1.35], [-0.15, 1.35], [-0.15, 0.15], [-1.35, 0.15]]
+footprint = "plan"                # the ground it covers, measured from the model (assets.md 3.4; the fix plan's F5)
 
 # A chest: something a world's author puts inside a house.
 [taxon."prop"]
@@ -130,7 +130,7 @@ taxon  = "structure/village"
 tags   = ["role:corner_in", "storey:base"]
 params = { reach = 1.2 }
 pivot  = "origin"
-footprint = [[-1.35, -0.15], [0.15, -0.15], [0.15, 1.35], [-0.15, 1.35], [-0.15, 0.15], [-1.35, 0.15]]
+footprint = "plan"                # the ground it covers, measured from the model (assets.md 3.4; the fix plan's F5)
 sink   = 1.5
 
 [material.ground]

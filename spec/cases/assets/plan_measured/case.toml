@@ -1,0 +1,53 @@
+format    = "via-case-1"
+summary   = "assets.md 3.4 (the fix plan's F5): via pack accept measures the plan of a model that asks (`plan = true`, or `footprint = \"plan\"`) and writes it where it is not the rectangle of `bounds`: an L, its rings; a box that asks, none; an L that asks nothing, none. `footprint = \"plan\"` is the plan's outer ring. `plan = \"yes\"` is doc.type, on a primitive too. A plan of two pieces, or another word, is no footprint (asset.bad_footprint); on a primitive `footprint = \"plan\"` is its own (F5 review)."
+milestone = 7
+actions   = ["accept", "bad", "islands", "word", "primitive"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.accept.file.facts]
+path   = "pack.facts.toml"
+equals = "expected/pack.facts.toml"
+
+[action.bad]
+via         = ["pack", "check", "bad.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.bad.diag.type]
+code    = "doc.type"
+subject = "asset.l.plan"
+
+[action.islands]
+via         = ["pack", "check", "islands.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.islands.diag.bad]
+code    = "asset.bad_footprint"
+subject = "asset.two.footprint"
+
+[action.word]
+via         = ["pack", "check", "word.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.word.diag.bad]
+code    = "asset.bad_footprint"
+subject = "asset.l.footprint"
+
+[action.primitive]
+via         = ["pack", "check", "primitive.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.primitive.diag.type]
+code    = "doc.type"
+subject = "asset.crate.plan"
+
+[action.primitive.diag.round]
+code    = "asset.bad_footprint"
+records = 0

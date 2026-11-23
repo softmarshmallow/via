@@ -157,13 +157,13 @@ Each archetype followed through the layers, and the holes that shows. Written by
 
 <!-- shows: begin -->
 
-Counted over 865 ledger rows, 58 kinds, 20 steps, 29 example worlds and 1009 conformance cases.
+Counted over 865 ledger rows, 58 kinds, 20 steps, 29 example worlds and 1010 conformance cases.
 
 | Archetype | Ledger rows that are ours: shown, partly, none | Chapters, with their cases | Kinds | Steps | Examples that use it |
 |---|---|---|---|---|---|
 | Field | 13, 5, 19 | fields 58, formulas 52 | 0 | 1 | 29 |
 | Shape | 3, 2, 5 | geometry 85 | 0 | 0 | 29 |
-| Asset | 13, 6, 28 | assets 87 | 0 | 0 | 19 |
+| Asset | 13, 6, 28 | assets 88 | 0 | 0 | 19 |
 | Derivation | 10, 9, 28 | formulas 52, derived 33 | 2 | 1 | 19 |
 | Simulation | 4, 1, 12 | derived 33, protocol 88 | 3 | 2 | 2 |
 | Profile | 14, 11, 10 | authority 57 | 19 | 0 | 20 |

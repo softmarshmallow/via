@@ -25,7 +25,7 @@ const PRIMITIVES: [(&str, u64); 5] = [
 /// The keys of `[asset.<id>.mount.<name>]` (2.7).
 const MOUNT_KEYS: [&str; 4] = ["at", "connector", "face", "rise"];
 
-const ASSET_KEYS: [&str; 19] = [
+const ASSET_KEYS: [&str; 20] = [
     "collision",
     "colour",
     "detail",
@@ -37,6 +37,7 @@ const ASSET_KEYS: [&str; 19] = [
     "mount",
     "params",
     "pivot",
+    "plan",
     "primitive",
     "sink",
     "size",
@@ -61,6 +62,11 @@ pub struct Asset {
     pub bounds: [i64; 6],
     /// The footprint in the asset frame, counter-clockwise; empty for a point footprint.
     pub footprint: Vec<(i64, i64)>,
+    /// What a model covers in plan (3.4), rings in the asset frame, outer counter-clockwise;
+    /// empty where it is the rectangle of `bounds` (and for a primitive or engine-made asset).
+    pub plan: Vec<Vec<(i64, i64)>>,
+    /// The footprint is declared `"plan"` (2.4): the outer ring of `plan`, else the box.
+    pub footprint_plan: bool,
     pub solid: bool,
     /// `solidity = "passable"` (2.4, M5): solid in every rule; only walks read the difference.
     pub passable: bool,
@@ -138,6 +144,20 @@ impl Asset {
             .map(|(x, y)| format!("[{}, {}]", mm(*x), mm(*y)))
             .collect();
         f.insert("footprint".into(), format!("[{}]", fp.join(", ")));
+        if !self.plan.is_empty() {
+            let rings: Vec<String> = self
+                .plan
+                .iter()
+                .map(|r| {
+                    let pts: Vec<String> = r
+                        .iter()
+                        .map(|(x, y)| format!("[{}, {}]", mm(*x), mm(*y)))
+                        .collect();
+                    format!("[{}]", pts.join(", "))
+                })
+                .collect();
+            f.insert("plan".into(), format!("[{}]", rings.join(", ")));
+        }
         f.insert(
             "origin".into(),
             format!("[{}]", self.origin.map(mm).join(", ")),
@@ -1194,13 +1214,14 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
 }
 
 /// The keys `defaults` may hold (2.5).
-const DEFAULT_KEYS: [&str; 10] = [
+const DEFAULT_KEYS: [&str; 11] = [
     "collision",
     "colour",
     "front",
     "max_relief",
     "params",
     "pivot",
+    "plan",
     "shared",
     "sink",
     "solidity",
@@ -1431,6 +1452,17 @@ fn read_asset(
     let mut model: Option<crate::asset::ModelFacts> = None;
     let mut origin = [0i64; 3];
     let mut measured = false;
+    // 2.4, 3.4: `plan` is true or false on any asset; only a model measures one.
+    if let Some(v) = declared("plan").filter(|v| !v.is_bool()) {
+        r.fault(
+            codes::doc::TYPE,
+            &subject,
+            Some("plan"),
+            &format!("`plan` takes true or false; found {}", form_word(v)),
+            "write `plan = true` to have the model's plan measured (assets.md 3.4)",
+        );
+    }
+    let mut plan: Vec<Vec<(i64, i64)>> = Vec::new();
     let (size, triangles, bounds) = if let Some(file) = &file {
         let detail: Vec<String> = match a.get("detail") {
             None => Vec::new(),
@@ -1488,6 +1520,11 @@ fn read_asset(
             &crate::asset::PIVOTS,
             "base_centre",
         );
+        // 3.4: the plan only where the asset asks for it (checked for every asset, above).
+        let want_plan = declared("plan")
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(false)
+            || matches!(a.get("footprint"), Some(toml::Value::String(w)) if w == "plan");
         let m = match files {
             Some(files) => {
                 let reader: &Reader<'_> = r;
@@ -1504,7 +1541,9 @@ fn read_asset(
                     diags: Vec::new(),
                     site_of: &site_of,
                 };
-                let m = crate::asset::measure(files, file, &kept, &front, &up, &pivot, &mut f);
+                let m = crate::asset::measure(
+                    files, file, &kept, &front, &up, &pivot, want_plan, &mut f,
+                );
                 own.extend(f.diags);
                 m
             }
@@ -1526,8 +1565,17 @@ fn read_asset(
                 },
                 raw: None,
                 triangles: 0,
+                plan: None,
             },
         };
+        // 3.4: the plan moved by the pivot as `bounds` is, rings of points in the asset frame.
+        plan = m.plan.as_ref().map_or_else(Vec::new, |rings| {
+            let p = m.facts.pivot_mm;
+            rings
+                .iter()
+                .map(|r| r.iter().map(|q| (q[0] - p[0], q[1] - p[1])).collect())
+                .collect()
+        });
         let bounds = match m.raw {
             Some(raw) => {
                 let p = m.facts.pivot_mm;
@@ -1640,6 +1688,44 @@ fn read_asset(
         (size, triangles, bounds)
     };
     let footprint = match a.get("footprint") {
+        // 2.4: `footprint = "plan"`, a model's measured plan (3.4) where it is one simple ring,
+        // else the box where none is written. A primitive or engine-made asset keeps its own
+        // (a cylinder's round one). A plan of several pieces, or a ring that touches itself at a
+        // corner, is no footprint: said, never one piece of it taken (F5's review).
+        Some(toml::Value::String(w)) if w == "plan" && model.is_some() => {
+            match plan_footprint(&plan, &bounds) {
+                Some(f) => f,
+                None => {
+                    r.fault(
+                        codes::asset::BAD_FOOTPRINT,
+                        &subject,
+                        Some("footprint"),
+                        "the model's measured plan is not one simple ring: it covers pieces apart, or touches itself at a corner",
+                        "declare the footprint as points",
+                    );
+                    return None;
+                }
+            }
+        }
+        Some(toml::Value::String(w)) if w == "plan" => match primitive.as_deref() {
+            Some("cylinder" | "cone" | "sphere") => ring16(&bounds),
+            _ => vec![
+                (bounds[0], bounds[1]),
+                (bounds[3], bounds[1]),
+                (bounds[3], bounds[4]),
+                (bounds[0], bounds[4]),
+            ],
+        },
+        Some(toml::Value::String(w)) => {
+            r.fault(
+                codes::asset::BAD_FOOTPRINT,
+                &subject,
+                Some("footprint"),
+                &format!("`footprint = \"{w}\"`: the one word it takes is \"plan\""),
+                "write `footprint = \"plan\"`, or the footprint as points",
+            );
+            return None;
+        }
         Some(v) => {
             let pts: Option<Vec<(i64, i64)>> = match v {
                 toml::Value::Array(xs) => xs
@@ -1877,6 +1963,8 @@ fn read_asset(
         triangles,
         bounds,
         footprint,
+        footprint_plan: matches!(a.get("footprint"), Some(toml::Value::String(w)) if w == "plan"),
+        plan,
         solid,
         passable,
         sink,
@@ -1894,6 +1982,34 @@ fn read_asset(
         shared,
     };
     Some((asset, own))
+}
+
+/// `footprint = "plan"` (2.4): the measured plan's one outer ring (3.4), where it is one and
+/// simple; the rectangle of `bounds` where no plan is written; `None` for a plan of several
+/// pieces or a ring that touches itself.
+pub(crate) fn plan_footprint(
+    plan: &[Vec<(i64, i64)>],
+    bounds: &[i64; 6],
+) -> Option<Vec<(i64, i64)>> {
+    let area2 = |r: &Vec<(i64, i64)>| -> i128 {
+        (0..r.len())
+            .map(|k| {
+                let (a, b) = (r[k], r[(k + 1) % r.len()]);
+                i128::from(a.0) * i128::from(b.1) - i128::from(b.0) * i128::from(a.1)
+            })
+            .sum()
+    };
+    let outer: Vec<&Vec<(i64, i64)>> = plan.iter().filter(|r| area2(r) > 0).collect();
+    match outer.as_slice() {
+        [] => Some(vec![
+            (bounds[0], bounds[1]),
+            (bounds[3], bounds[1]),
+            (bounds[3], bounds[4]),
+            (bounds[0], bounds[4]),
+        ]),
+        [one] if is_ccw_simple(one) => Some((*one).clone()),
+        _ => None,
+    }
 }
 
 /// An enumerated declared fact (2.4: `pivot`, `collision`): one of `words`, else `doc.type`

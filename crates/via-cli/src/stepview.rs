@@ -1558,6 +1558,7 @@ impl<'a> View<'a> {
                     "triangles",
                     "sink",
                     "footprint",
+                    "plan",
                     "mounts",
                     "collision",
                     "primitive",
@@ -1683,6 +1684,25 @@ impl<'a> View<'a> {
                         .map(|a| {
                             serde_json::to_string(
                                 &a.footprint.iter().map(|p| [p.0, p.1]).collect::<Vec<_>>(),
+                            )
+                            .unwrap_or_default()
+                        })
+                        .collect(),
+                )),
+                // `assets.md` 3.4: rings of `[x, y]` millimetres, `""` where the model is its
+                // box (or no model): what a library reads to know what a piece covers.
+                "plan" => Shaped::flat(Column::Str(
+                    assets
+                        .iter()
+                        .map(|a| {
+                            if a.plan.is_empty() {
+                                return String::new();
+                            }
+                            serde_json::to_string(
+                                &a.plan
+                                    .iter()
+                                    .map(|r| r.iter().map(|p| [p.0, p.1]).collect::<Vec<_>>())
+                                    .collect::<Vec<_>>(),
                             )
                             .unwrap_or_default()
                         })

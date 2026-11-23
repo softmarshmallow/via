@@ -1,0 +1,15 @@
+# assets.md 3.4: the plan, measured where an asset asks.
+[asset.l]                         # an L, 2 by 2 m less a 1 m square: its plan is written
+file = "l.glb"
+plan = true
+
+[asset.l_ground]                  # the same L, claiming the ground it covers
+file      = "l.glb"
+footprint = "plan"
+
+[asset.box]                       # a box asks: its plan is its rectangle, not written
+file = "box.glb"
+plan = true
+
+[asset.quiet]                     # the L, asking nothing: no plan measured
+file = "l.glb"

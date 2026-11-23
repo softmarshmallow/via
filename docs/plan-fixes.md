@@ -33,6 +33,7 @@ Then the town (T1), which needs the scale from F8 and closes challenge 33.
 | F3b | **Pitch and span from the model.** Split from F3 on 2026-11-24 (below): every reader defaults a piece's pitch and span to its measured box (a panel between posts: its box and the post), and the packs drop the restatements (review item 4, 80 numbers). | The review's pack counts fall by what was removed; every example's rows hold. |
 | F4 | **One kit reader in the SDK.** `viasdk` reads a kit (pieces, tags, bounds, params, the taxon's `shared` once), folds a feature's attributes, and reads the ground at points (review section 4). lib/building and lib/town use it; lib/town reads `shared`. | The six copies, five folds and six ground reads are one each; all library tests and example rows hold. |
 | F5 | **A plan from the model's geometry.** An outline measured from the model's triangles at `via pack accept`, a fact beside `bounds`. `check` holds a corner's turn with it; a library says an open corner; declared footprints are no longer typed (item 5). | Kenney's corner turned a quarter wrong is said; the bevelled hip's open eaves are said by `lay`, not only by the example's script; the 48 declared footprint numbers are gone. |
+| F5b | **What the plan is for.** `check` holds a corner's turn by its measured plan; `lay` says a roof's corner left open over a bevel. Split from F5 on 2026-11-24. | Kenney's corner turned a quarter wrong is said; the bevelled hip's open eaves are said by `lay`. |
 | F6 | **A kit a second world can name.** A pack that takes another pack, or ids scoped by their taxon, so two kits' `base` and `door` are not one id (item 9). | `realm` builds from its three kits with no merge script, and its rows hold. |
 | F7 | **Mounts from the model.** A mount read from a named node in the model where the model has one; a stated mount stays where it has none (item 8). A port's hole held to its mount. | works' 51 mount numbers fall by those its models carry; `low` (a rise restated a metre low) is said. |
 | F8 | **Scale, and the ruling on challenge 33.** A scale factor in the pack, applied where the model is measured (item 6). Then the ruling: is lib/town's kit run still the town's way, now that `row.py` lays rows of kit-built houses (item 3)? | Kenney's kit stands at a person's size with no `door_narrow`; the ruling is in `docs/doctrine.md`. |
@@ -122,3 +123,20 @@ Changed so far:
   `head` view not asked of the surface field (a step that writes the surface could not use
   `ground`), `kit` taking a string column letter by letter, `class` counted as an attribute: all
   mended, with tests of the methods.
+- **F5, 2026-11-24.** A measured fact `plan` (spec/assets.md 3.4): the cells of a lattice the
+  model's triangles cover, traced into rings, written only where it is not the box's rectangle.
+  Measured only for an asset that asks (`plan = true`, also in a taxon's `defaults`, or
+  `footprint = "plan"`): as first built every model measured it, and the shipped starter pack's
+  trees would have written canopy outlines of hundreds of points no one reads into every facts
+  file, and paid the tracing on every build. `footprint = "plan"` is the plan's outer ring; the
+  kits' four typed L footprints (48 numbers) are now that, each equal to what was typed (13
+  asset entries in 10 packs with the generated variants and realm's merged pack).
+  `pack.query` gives the column `plan`. What it is for, a corner's turn held and a roof's open
+  corner said, is F5b: it needs `lay`'s corner convention read first.
+  The independent review found formatting and clippy failing (mine), a traced ring that touches
+  itself at a corner and a plan of two islands both taken as a footprint (now
+  `asset.bad_footprint`: declare it as points), tracing time growing with islands times edges
+  (each start once now: 8 192 islands in 0.02 s), every model reading its indices even unasked
+  (and newly refusable: only where asked now), `footprint = "plan"` on a cylinder giving its box
+  (its own round one now), `plan` unchecked on a primitive, a misspelt word told to reverse its
+  points, and the outward rounding by up to a cell unstated (3.4 says it). All mended, with cases.

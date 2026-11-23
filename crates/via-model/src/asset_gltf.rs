@@ -129,6 +129,9 @@ pub struct Measure {
     pub triangles: u64,
     /// No material has a base colour texture.
     pub untextured: bool,
+    /// Every triangle in plan, in `raw`'s axes and millimetres: what [`plan_rings`] traces where
+    /// an asset asks for its plan (3.4).
+    pub plan_tris: Vec<[[i64; 2]; 3]>,
 }
 
 /// A model read: its JSON, and the binary chunk of a `.glb`.
@@ -330,6 +333,7 @@ impl Model {
         &self,
         external: &BTreeMap<usize, Vec<u8>>,
         axes: Axes,
+        want_plan: bool,
     ) -> Result<Measure, Fault> {
         let buffers = self.buffers(external)?;
         let scenes = self.list("scenes");
@@ -359,6 +363,8 @@ impl Model {
             lo: [i64::MAX; 3],
             hi: [i64::MIN; 3],
             triangles: 0,
+            want_plan,
+            plan_tris: Vec::new(),
             on_path: BTreeSet::new(),
         };
         let roots = scene.get("nodes").and_then(Json::as_arr).unwrap_or(&[]);
@@ -385,6 +391,7 @@ impl Model {
             ],
             triangles: walk.triangles,
             untextured,
+            plan_tris: walk.plan_tris,
         })
     }
 }
@@ -483,6 +490,10 @@ struct Walk<'a> {
     lo: [i64; 3],
     hi: [i64; 3],
     triangles: u64,
+    /// Each triangle in plan, millimetres in the asset frame's axes (3.4); kept only where the
+    /// asset asks for its plan, so a model that does not reads no index and keeps no triangle.
+    want_plan: bool,
+    plan_tris: Vec<[[i64; 2]; 3]>,
     on_path: BTreeSet<usize>,
 }
 
@@ -579,6 +590,14 @@ impl Walk<'_> {
                 }
             };
             self.triangles = self.triangles.saturating_add(t as u64);
+            let order: Vec<usize> = match p.get("indices") {
+                Some(i) if self.want_plan => {
+                    self.indices(i.as_index().unwrap_or(usize::MAX), &format!("{at}/indices"))?
+                }
+                _ if self.want_plan => (0..points.len()).collect(),
+                _ => Vec::new(),
+            };
+            let mut mapped: Vec<[i64; 3]> = Vec::with_capacity(points.len());
             for v in points {
                 let p = [
                     world[0][0] * v[0] + world[0][1] * v[1] + world[0][2] * v[2] + world[0][3],
@@ -586,6 +605,7 @@ impl Walk<'_> {
                     world[2][0] * v[0] + world[2][1] * v[1] + world[2][2] * v[2] + world[2][3],
                 ];
                 let a = self.axes.map(p);
+                let mut mm_point = [0i64; 3];
                 for (k, ak) in a.iter().enumerate() {
                     let mm = via_num::round_to_lattice(ak * 1000.0).map_err(|_| {
                         bad(
@@ -599,10 +619,61 @@ impl Walk<'_> {
                     if mm > self.hi[k] {
                         self.hi[k] = mm;
                     }
+                    mm_point[k] = mm;
+                }
+                if self.want_plan {
+                    mapped.push(mm_point);
+                }
+            }
+            // The triangles in plan (3.4): what the mode makes of the index list.
+            let tri = |a: usize, b: usize, c: usize| -> Option<[[i64; 2]; 3]> {
+                let (pa, pb, pc) = (
+                    mapped.get(*order.get(a)?)?,
+                    mapped.get(*order.get(b)?)?,
+                    mapped.get(*order.get(c)?)?,
+                );
+                Some([[pa[0], pa[1]], [pb[0], pb[1]], [pc[0], pc[1]]])
+            };
+            for k in 0..if self.want_plan { t } else { 0 } {
+                let got = match mode {
+                    4 => tri(3 * k, 3 * k + 1, 3 * k + 2),
+                    5 => tri(k, k + 1, k + 2),
+                    _ => tri(0, k + 1, k + 2),
+                };
+                if let Some(g) = got {
+                    self.plan_tris.push(g);
                 }
             }
         }
         Ok(())
+    }
+
+    /// A `SCALAR` index accessor's values (glTF 2.0 3.7.2.1: unsigned byte, short or int).
+    fn indices(&self, ai: usize, here: &str) -> Result<Vec<usize>, Fault> {
+        let Some(acc) = self.m.list("accessors").get(ai) else {
+            return Err(bad(Some(here), "names no accessor"));
+        };
+        let ct = acc
+            .get("componentType")
+            .and_then(Json::as_index)
+            .unwrap_or(0);
+        let size = component_size(ct)
+            .filter(|_| matches!(ct, 5121 | 5123 | 5125))
+            .ok_or_else(|| bad(Some(here), "an index accessor of an unknown type"))?;
+        let count = acc.get("count").and_then(Json::as_index).unwrap_or(0);
+        let Some(bv) = acc.get("bufferView").and_then(Json::as_index) else {
+            return Ok(vec![0; count]);
+        };
+        let (data, start, stride) = self.view(bv, here)?;
+        let start = start + acc.get("byteOffset").and_then(Json::as_index).unwrap_or(0);
+        let stride = stride.unwrap_or(size);
+        (0..count)
+            .map(|i| {
+                read(data, start + i * stride, ct, false)
+                    .map(|v| v as usize)
+                    .ok_or_else(|| bad(Some(here), "the index accessor reads past its buffer"))
+            })
+            .collect()
     }
 
     /// A `VEC3` accessor's values as doubles, sparse values applied (glTF 2.0, 3.6.2).
@@ -718,6 +789,180 @@ impl Walk<'_> {
     }
 }
 
+/// What a model covers in plan (`assets.md` 3.4): the cells of a lattice laid from `[lo0, lo1]`
+/// that a triangle of positive area overlaps, traced into rings. `None` where every cell is
+/// covered, or none is.
+pub fn plan_rings(
+    tris: &[[[i64; 2]; 3]],
+    lo: [i64; 3],
+    hi: [i64; 3],
+) -> Option<Vec<Vec<[i64; 2]>>> {
+    let (w, h) = (hi[0] - lo[0], hi[1] - lo[1]);
+    if w <= 0 || h <= 0 {
+        return None;
+    }
+    let c = 10.max((w.max(h) + 511) / 512);
+    let (nx, ny) = (((w + c - 1) / c) as usize, ((h + c - 1) / c) as usize);
+    let mut cov = vec![false; nx * ny];
+    for t in tris {
+        let a2 =
+            (t[1][0] - t[0][0]) * (t[2][1] - t[0][1]) - (t[2][0] - t[0][0]) * (t[1][1] - t[0][1]);
+        if a2 == 0 {
+            continue;
+        }
+        let xs = [t[0][0], t[1][0], t[2][0]];
+        let ys = [t[0][1], t[1][1], t[2][1]];
+        let (tx0, tx1) = (*xs.iter().min()?, *xs.iter().max()?);
+        let (ty0, ty1) = (*ys.iter().min()?, *ys.iter().max()?);
+        let i0 = ((tx0 - lo[0]) / c).max(0) as usize;
+        let i1 = (((tx1 - lo[0]) + c - 1) / c).min(nx as i64) as usize;
+        let j0 = ((ty0 - lo[1]) / c).max(0) as usize;
+        let j1 = (((ty1 - lo[1]) + c - 1) / c).min(ny as i64) as usize;
+        for j in j0..j1 {
+            for i in i0..i1 {
+                let x0 = lo[0] + i as i64 * c;
+                let y0 = lo[1] + j as i64 * c;
+                if !cov[j * nx + i] && tri_overlaps_cell(t, a2 > 0, [x0, y0, x0 + c, y0 + c]) {
+                    cov[j * nx + i] = true;
+                }
+            }
+        }
+    }
+    let n = cov.iter().filter(|v| **v).count();
+    if n == 0 || n == cov.len() {
+        return None;
+    }
+    Some(trace(&cov, nx, ny, c, lo, hi))
+}
+
+/// Whether a triangle (`ccw`: its winding) overlaps the inside of a cell `[x0, y0, x1, y1]`:
+/// separating axes, the cell's two and the triangle's three; touching is no overlap.
+fn tri_overlaps_cell(t: &[[i64; 2]; 3], ccw: bool, cell: [i64; 4]) -> bool {
+    let xs = [t[0][0], t[1][0], t[2][0]];
+    let ys = [t[0][1], t[1][1], t[2][1]];
+    if xs.iter().max().copied().unwrap_or(i64::MIN) <= cell[0]
+        || xs.iter().min().copied().unwrap_or(i64::MAX) >= cell[2]
+        || ys.iter().max().copied().unwrap_or(i64::MIN) <= cell[1]
+        || ys.iter().min().copied().unwrap_or(i64::MAX) >= cell[3]
+    {
+        return false;
+    }
+    let corners = [
+        [cell[0], cell[1]],
+        [cell[2], cell[1]],
+        [cell[2], cell[3]],
+        [cell[0], cell[3]],
+    ];
+    for k in 0..3 {
+        let (a, b) = (t[k], t[(k + 1) % 3]);
+        // Every corner on the outer side of this edge (or on it): separated.
+        let outside = corners.iter().all(|p| {
+            let cr = i128::from(b[0] - a[0]) * i128::from(p[1] - a[1])
+                - i128::from(b[1] - a[1]) * i128::from(p[0] - a[0]);
+            if ccw {
+                cr <= 0
+            } else {
+                cr >= 0
+            }
+        });
+        if outside {
+            return false;
+        }
+    }
+    true
+}
+
+/// The rings round the covered cells of a grid, along cell edges: outer rings counter-clockwise,
+/// holes clockwise, a vertex only where the outline turns, coordinates held to `hi`.
+fn trace(
+    cov: &[bool],
+    nx: usize,
+    ny: usize,
+    c: i64,
+    lo: [i64; 3],
+    hi: [i64; 3],
+) -> Vec<Vec<[i64; 2]>> {
+    let on = |i: i64, j: i64| {
+        i >= 0
+            && j >= 0
+            && (i as usize) < nx
+            && (j as usize) < ny
+            && cov[j as usize * nx + i as usize]
+    };
+    // Directed boundary edges between lattice corners, the covered cell on their left.
+    let mut next: BTreeMap<(i64, i64), Vec<(i64, i64)>> = BTreeMap::new();
+    for j in 0..ny as i64 {
+        for i in 0..nx as i64 {
+            if !on(i, j) {
+                continue;
+            }
+            if !on(i, j - 1) {
+                next.entry((i, j)).or_default().push((i + 1, j));
+            }
+            if !on(i + 1, j) {
+                next.entry((i + 1, j)).or_default().push((i + 1, j + 1));
+            }
+            if !on(i, j + 1) {
+                next.entry((i + 1, j + 1)).or_default().push((i, j + 1));
+            }
+            if !on(i - 1, j) {
+                next.entry((i, j + 1)).or_default().push((i, j));
+            }
+        }
+    }
+    let mut rings = Vec::new();
+    // Each vertex once, in order, as a start: the work is the edges', not islands times edges (F5's
+    // review: 65 536 islands took 25 s when each ring searched the map from its start).
+    let starts: Vec<(i64, i64)> = next.keys().copied().collect();
+    for start in starts {
+        while next.get(&start).is_some_and(|v| !v.is_empty()) {
+            let mut ring = vec![start];
+            let mut at = start;
+            let mut came: Option<(i64, i64)> = None;
+            loop {
+                let outs = next
+                    .get_mut(&at)
+                    .expect("an edge leaves every vertex on a ring");
+                // At a corner two cells touch by: turn left (keep the covered cell on the left).
+                let k = match (came, outs.len()) {
+                    (Some(d), n) if n > 1 => {
+                        let left = (-d.1, d.0);
+                        outs.iter()
+                            .position(|o| (o.0 - at.0, o.1 - at.1) == left)
+                            .unwrap_or(0)
+                    }
+                    _ => 0,
+                };
+                let to = outs.remove(k);
+                came = Some((to.0 - at.0, to.1 - at.1));
+                at = to;
+                if at == start {
+                    break;
+                }
+                ring.push(at);
+            }
+            // Keep only the vertices where the outline turns.
+            let m = ring.len();
+            let turned: Vec<(i64, i64)> = (0..m)
+                .filter(|&k| {
+                    let (p, q, r) = (ring[(k + m - 1) % m], ring[k], ring[(k + 1) % m]);
+                    (q.0 - p.0, q.1 - p.1).0.signum() != (r.0 - q.0, r.1 - q.1).0.signum()
+                        || (q.0 - p.0, q.1 - p.1).1.signum() != (r.0 - q.0, r.1 - q.1).1.signum()
+                })
+                .map(|k| ring[k])
+                .collect();
+            rings.push(
+                turned
+                    .into_iter()
+                    .map(|(i, j)| [(lo[0] + i * c).min(hi[0]), (lo[1] + j * c).min(hi[1])])
+                    .collect(),
+            );
+        }
+    }
+    rings.sort();
+    rings
+}
+
 fn component_size(ct: usize) -> Option<usize> {
     match ct {
         5120 | 5121 => Some(1),
@@ -774,6 +1019,112 @@ fn read(data: &[u8], at: usize, ct: usize, normalized: bool) -> Option<f64> {
 mod tests {
     use super::*;
 
+    /// Two triangles of a rectangle in plan, millimetres.
+    fn quad(x0: i64, y0: i64, x1: i64, y1: i64) -> [[[i64; 2]; 3]; 2] {
+        [
+            [[x0, y0], [x1, y0], [x1, y1]],
+            [[x0, y0], [x1, y1], [x0, y1]],
+        ]
+    }
+
+    #[test]
+    fn a_box_covers_its_rectangle_and_writes_no_plan() {
+        let t = quad(0, 0, 1000, 500);
+        assert_eq!(plan_rings(&t, [0, 0, 0], [1000, 500, 300]), None);
+    }
+
+    #[test]
+    fn an_l_is_one_ring_counter_clockwise_by_its_turns() {
+        let mut t: Vec<[[i64; 2]; 3]> = quad(0, 0, 2000, 1000).to_vec();
+        t.extend(quad(0, 1000, 1000, 2000));
+        let rings = plan_rings(&t, [0, 0, 0], [2000, 2000, 300]).expect("an L is no rectangle");
+        assert_eq!(rings.len(), 1);
+        let r = &rings[0];
+        assert_eq!(r.len(), 6);
+        for p in [
+            [0, 0],
+            [2000, 0],
+            [2000, 1000],
+            [1000, 1000],
+            [1000, 2000],
+            [0, 2000],
+        ] {
+            assert!(r.contains(&p), "{p:?} in {r:?}");
+        }
+        let area2: i64 = (0..r.len())
+            .map(|k| r[k][0] * r[(k + 1) % r.len()][1] - r[(k + 1) % r.len()][0] * r[k][1])
+            .sum();
+        assert_eq!(area2, 2 * 3_000_000, "counter-clockwise, 3 m2");
+    }
+
+    #[test]
+    fn a_frame_has_a_hole_and_vertical_faces_have_no_plan() {
+        let mut t: Vec<[[i64; 2]; 3]> = Vec::new();
+        for q in [
+            quad(0, 0, 3000, 1000),
+            quad(0, 2000, 3000, 3000),
+            quad(0, 1000, 1000, 2000),
+            quad(2000, 1000, 3000, 2000),
+        ] {
+            t.extend(q);
+        }
+        let rings = plan_rings(&t, [0, 0, 0], [3000, 3000, 300]).expect("a frame");
+        assert_eq!(rings.len(), 2);
+        let area2 = |r: &Vec<[i64; 2]>| -> i64 {
+            (0..r.len())
+                .map(|k| r[k][0] * r[(k + 1) % r.len()][1] - r[(k + 1) % r.len()][0] * r[k][1])
+                .sum()
+        };
+        let mut areas: Vec<i64> = rings.iter().map(area2).collect();
+        areas.sort();
+        assert_eq!(
+            areas,
+            vec![-2_000_000, 18_000_000],
+            "the hole clockwise, the outer ring counter-clockwise"
+        );
+        // A wall's faces stand on edge: no area in plan, no plan.
+        let wall = [[[0, 0], [1000, 0], [1000, 0]], [[0, 0], [0, 0], [1000, 0]]];
+        assert_eq!(plan_rings(&wall, [0, 0, 0], [1000, 200, 3000]), None);
+    }
+
+    #[test]
+    fn many_islands_trace_in_time_and_touching_corners_are_apart() {
+        // F5's review: each ring searched the map from its start, 65 536 islands took 25 s.
+        let mut t = Vec::new();
+        for j in 0..128 {
+            for i in 0..128 {
+                if (i + j) % 2 == 0 {
+                    t.extend(quad(i * 20, j * 20, i * 20 + 20, j * 20 + 20));
+                }
+            }
+        }
+        let started = std::time::Instant::now();
+        let rings = plan_rings(&t, [0, 0, 0], [2560, 2560, 100]).expect("a chequer");
+        assert_eq!(
+            rings.len(),
+            128 * 64,
+            "cells that touch at a corner are apart"
+        );
+        assert!(started.elapsed().as_secs() < 5);
+    }
+
+    #[test]
+    fn a_bevel_of_a_few_centimetres_is_seen() {
+        // Kenney's corner block (K10): a metre square less a 139 mm bevel at one corner.
+        let t = vec![
+            [[0, 0], [1000, 0], [1000, 861]],
+            [[0, 0], [1000, 861], [861, 1000]],
+            [[0, 0], [861, 1000], [0, 1000]],
+        ];
+        let rings =
+            plan_rings(&t, [0, 0, 0], [1000, 1000, 625]).expect("the bevel leaves cells open");
+        assert_eq!(rings.len(), 1);
+        assert!(
+            !rings[0].contains(&[1000, 1000]),
+            "the bevelled corner is not covered"
+        );
+    }
+
     /// A `.gltf` of one triangle list over `positions`, its buffer a data URI.
     fn gltf(positions: &[[f32; 3]], node: &str, extra: &str) -> Vec<u8> {
         let mut bin = Vec::new();
@@ -829,7 +1180,7 @@ mod tests {
         );
         let m = Model::open(&bytes).unwrap();
         let r = m
-            .measure(&BTreeMap::new(), Axes::parse("+z", "+y").unwrap())
+            .measure(&BTreeMap::new(), Axes::parse("+z", "+y").unwrap(), false)
             .unwrap();
         assert_eq!(r.triangles, 1);
         assert_eq!(r.raw, [-2000, 0, 0, -1000, 1500, 1000]);

@@ -99,7 +99,7 @@ taxon = "structure/village"
 tags = ["role:roof_valley"]
 params = { span = 3.3, reach = 1.2 }
 pivot = "origin"
-footprint = [[-1.2, -3.3], [3.3, -3.3], [3.3, 1.2], [0, 1.2], [0, 0], [-1.2, 0]]
+footprint = "plan"
 
 [asset.v_corner_in]
 file = "village/packs/village/corner_in.glb"
@@ -107,7 +107,7 @@ taxon = "structure/village"
 tags = ["role:corner_in"]
 params = { reach = 1.2 }
 pivot = "origin"
-footprint = [[-1.35, -0.15], [0.15, -0.15], [0.15, 1.35], [-0.15, 1.35], [-0.15, 0.15], [-1.35, 0.15]]
+footprint = "plan"
 
 [asset.v_chest]
 primitive = "box"
@@ -138,7 +138,7 @@ taxon = "structure/village"
 tags = ["role:corner_in", "storey:base"]
 params = { reach = 1.2 }
 pivot = "origin"
-footprint = [[-1.35, -0.15], [0.15, -0.15], [0.15, 1.35], [-0.15, 1.35], [-0.15, 0.15], [-1.35, 0.15]]
+footprint = "plan"
 sink = 1.5
 
 [asset.t_post]

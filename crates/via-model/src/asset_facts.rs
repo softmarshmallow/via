@@ -14,10 +14,11 @@ use crate::text;
 pub const HEADER: &str = "# Written by via pack accept. Do not edit.";
 
 /// The keys of an entry, in the order 4.1 writes them.
-pub const KEYS: [&str; 19] = [
+pub const KEYS: [&str; 20] = [
     "bounds",
     "origin",
     "footprint",
+    "plan",
     "triangles",
     "detail_triangles",
     "front",
@@ -159,6 +160,17 @@ pub fn entry(a: &Asset) -> Vec<(&'static str, String)> {
                 .map(|(x, y)| format!("[{}, {}]", len(*x), len(*y))),
         ),
     ));
+    // 3.4: only where the model is no box, so a box's entry is as before.
+    if !a.plan.is_empty() {
+        out.push((
+            "plan",
+            list(
+                a.plan
+                    .iter()
+                    .map(|r| list(r.iter().map(|(x, y)| format!("[{}, {}]", len(*x), len(*y))))),
+            ),
+        ));
+    }
     out.push(("triangles", a.triangles.to_string()));
     if let Some(m) = &a.model {
         if !m.detail.is_empty() {
@@ -616,6 +628,22 @@ fn fill_from_facts(
             })
             .collect::<Option<Vec<_>>>()?
     };
+    let plan: Vec<Vec<(i64, i64)>> = match old.get("plan") {
+        None => Vec::new(),
+        Some(t) => fact_value(t)?
+            .as_array()?
+            .iter()
+            .map(|r| {
+                r.as_array()?
+                    .iter()
+                    .map(|p| {
+                        let p = p.as_array().filter(|p| p.len() == 2)?;
+                        Some((fact_mm(&p[0])?, fact_mm(&p[1])?))
+                    })
+                    .collect::<Option<Vec<_>>>()
+            })
+            .collect::<Option<Vec<_>>>()?,
+    };
     let triangles = u64::try_from(fact_value(old.get("triangles")?)?.as_integer()?).ok()?;
     let detail_triangles = match old.get("detail_triangles") {
         None => Vec::new(),
@@ -647,7 +675,12 @@ fn fill_from_facts(
     m.copies = copies;
     a.bounds = bounds;
     a.origin = origin;
-    a.footprint = footprint;
+    a.footprint = if a.footprint_plan {
+        crate::pack::plan_footprint(&plan, &bounds).unwrap_or(footprint)
+    } else {
+        footprint
+    };
+    a.plan = plan;
     a.triangles = triangles;
     a.size = [
         bounds[3] - bounds[0],
@@ -727,8 +760,9 @@ pub fn stand_ins(pack: &mut Pack) -> Vec<Diag> {
             continue;
         };
         let measured = a.model.as_ref().is_some_and(|m| m.measured);
+        let footprint_plan = a.footprint_plan;
         if !measured {
-            if fill_from_facts(a, old, declared_footprint).is_none() {
+            if fill_from_facts(a, old, declared_footprint && !footprint_plan).is_none() {
                 let d = stale(format!(
                     "the entry of `{id}` in {} cannot be read back",
                     pack.facts_display

@@ -168,6 +168,9 @@ pub struct Measured {
     /// `[x0, y0, z0, x1, y1, z1]` in the asset frame's axes before the pivot, mm.
     pub raw: Option<[i64; 6]>,
     pub triangles: u64,
+    /// What the main model covers in plan (3.4), in `raw`'s axes and millimetres; `None` where
+    /// it is the rectangle of `raw` or nothing has area in plan.
+    pub plan: Option<Vec<Vec<[i64; 2]>>>,
 }
 
 /// Collects the diagnostics of one model asset.
@@ -215,11 +218,13 @@ impl Faults<'_> {
 }
 
 /// Reads one copy and the files it references, adding each bound file to `files`.
+#[allow(clippy::too_many_arguments)]
 fn read_copy(
     root: &RootOf,
     path: &Path,
     parts: &[String],
     axes: Axes,
+    want_plan: bool,
     files: &mut BTreeMap<String, String>,
     f: &mut Faults<'_>,
 ) -> Option<(Copy, String)> {
@@ -323,7 +328,7 @@ fn read_copy(
     if !ok {
         return None;
     }
-    match model.measure(&external, axes) {
+    match model.measure(&external, axes, want_plan) {
         Ok(m) => Some((
             Copy {
                 untextured: m.untextured,
@@ -352,7 +357,8 @@ pub fn pivot_of(rule: &str, raw: &[i64; 6]) -> [i64; 3] {
 }
 
 /// Measures a model asset (3): its file, then each `detail` copy (3.3), with the bound files
-/// they reference (2.2). Faults go to `f`.
+/// they reference (2.2), and its plan (3.4) where `want_plan`. Faults go to `f`.
+#[allow(clippy::too_many_arguments)]
 pub fn measure(
     root: &RootOf,
     file: &str,
@@ -360,6 +366,7 @@ pub fn measure(
     front: &str,
     up: &str,
     pivot: &str,
+    want_plan: bool,
     f: &mut Faults<'_>,
 ) -> Measured {
     // A pair that is no rotation was reported by the pack reader (`pack.bad_axes`); the model
@@ -385,10 +392,11 @@ pub fn measure(
         facts: facts.clone(),
         raw: None,
         triangles: 0,
+        plan: None,
     };
     let main = match open_written(&root.root, file) {
         Ok((path, parts)) => {
-            let r = read_copy(root, &path, &parts, axes, &mut facts.files, f);
+            let r = read_copy(root, &path, &parts, axes, want_plan, &mut facts.files, f);
             if let Some((_, d)) = &r {
                 facts.copies.push((parts.join("/"), d.clone()));
             }
@@ -403,7 +411,7 @@ pub fn measure(
     for (k, d) in detail.iter().enumerate() {
         match open_written(&root.root, d) {
             Ok((path, parts)) => {
-                let r = read_copy(root, &path, &parts, axes, &mut facts.files, f);
+                let r = read_copy(root, &path, &parts, axes, false, &mut facts.files, f);
                 if let Some((_, dg)) = &r {
                     facts.copies.push((parts.join("/"), dg.clone()));
                 }
@@ -478,5 +486,15 @@ pub fn measure(
     out.facts = facts;
     out.raw = Some(raw);
     out.triangles = main.measure.triangles;
+    // 3.4: traced only for an asset that asks (`plan = true`, or `footprint = "plan"`).
+    out.plan = if want_plan {
+        crate::asset_gltf::plan_rings(
+            &main.measure.plan_tris,
+            [raw[0], raw[1], raw[2]],
+            [raw[3], raw[4], raw[5]],
+        )
+    } else {
+        None
+    };
     out
 }
