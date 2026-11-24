@@ -11,12 +11,18 @@ and rebuild; you do not repaint a map.
 It is for new games, small teams first, on Godot or Unreal, with an agent writing the documents and
 a person reviewing them. `via` is a working name.
 
+![One world, one line at a time.](docs/reports/demo-knobs.png)
+
+One world, its knobs turned one line at a time: the stream, the high street, the houses' grain and
+height, the land, the woods, the seed. Every picture is a real build, with no house or tree placed
+by hand, and every number in it is a measure with its protocol (`examples/demo`). The knobs turned
+one after another while the camera circles: `docs/reports/demo-timelapse.mp4`.
+
 ![One line changes. The whole town follows.](docs/reports/demo-hero.png)
 
-One line of a world's text changes (the high street's path, 40 m north): rebuilt, 53 houses re-plan
-along it from Kenney's kit, the woods give way and grow back, every door still opens on its street,
-nothing overlaps, and nothing was placed by hand. Every number in the picture is a measure with
-its protocol: `examples/demo` (the sweep, each step a real build: `docs/reports/demo-sweep.mp4`).
+One line changes (the high street's path, 40 m north): rebuilt, 52 houses re-plan along it from
+Kenney's kit, the woods follow it and keep off every house, every door still opens on its street,
+nothing overlaps (`docs/reports/demo-sweep.mp4`: the same line in steps).
 
 ## Status
 

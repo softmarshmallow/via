@@ -1,0 +1,3 @@
+# Knob: the town's height. Four to six storeys, not one to three: a city's street.
+[step.rows.params]
+heights = [4, 5, 6]

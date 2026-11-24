@@ -9,6 +9,39 @@ every house, every door still opens on its street. Nobody touched a house or a t
 
 ![The hero](../../docs/reports/demo-hero.png)
 
+## The knobs
+
+The same base, each knob one line, each turned alone: `docs/reports/demo-knobs.png`. And all of
+them turned one after another while the camera circles the valley, every state a real build:
+`docs/reports/demo-timelapse.mp4` (its GIF, 9 MB, is not committed: `compose.py` writes it).
+
+![The knobs](../../docs/reports/demo-knobs.png)
+
+| Knob | The one line | Where |
+|---|---|---|
+| The stream | `width = 22` | `[feature.stream]`, world.toml |
+| The high street | `path = [[45, 165], [435, 165]]` | `[feature.high_street]`, world.toml |
+| The houses' grain | `widths = [3]` | `[step.rows.params]`, layers/town.toml |
+| The town's height | `heights = [4, 5, 6]` | `[step.rows.params]`, layers/town.toml |
+| The land | `relief = 11` | `[let]`, world.toml |
+| The woods | `woods = 0.35` (or `-0.35`, farmland) | `[let]`, world.toml |
+| What the woods are | `assets = ["s_tree_pine"]` | `[scatter.woods]`, layers/growth.toml |
+| The seed | `seed = 7` | world.toml |
+
+Each is a change file in `changes/`. The town's style was written on each of its five rows; the
+rows step now gives every row its style where the row writes none (row.py rule 12), so one line of
+its `params` sets the whole town. Not a knob, said: hipped roofs. Kenney's slanted roof is made for
+a building two blocks deep in all, and a row's house is its corner blocks and one bay deep at the
+least (lay says `roof_none` and lays the flat roof). And a knob turned too far is refused, not
+mangled: in the timelapse, after the river, the high street, the grain and the height, a 16 m swell
+asks four houses' plots to cut more than the 3 m a plot may (`authority.max_change`, five errors
+naming them; alone, or with the grain alone, 16 m builds clean): the land knob is 11 m.
+
+```bash
+python3 examples/demo/timelapse.py build/tl          # every state and every knob, built, drawn, measured
+python3 examples/demo/compose.py build/tl            # the gallery and the timelapse (needs PIL, ffmpeg)
+```
+
 The sweep, the same line moved in even steps, each step a real build drawn from one camera:
 `docs/reports/demo-sweep.mp4` (and `demo-sweep.gif`).
 
@@ -28,9 +61,9 @@ python3 examples/demo/compose.py build/sweep            # the hero and the video
 | `layers/walls.toml` | `lay` and `check` |
 | `layers/growth.toml` | Woods, single trees and underbrush, scattered by cover, kept off the verges and every house's plot |
 | `packs/demo.toml` | Two kits, each included whole (spec/assets.md 2.8): Kenney's at a person's size (`k_`), the starter pack's trees (`s_`) |
-| `changes/north.toml` | The one line: the high street 40 m further north |
+| `changes/` | The knobs, one line each (below); `north.toml` is the hero's |
 | `measure.py`, `expect.toml` | The measures, and the rows a build must hold |
-| `sweep.py`, `compose.py` | The sweep (each step a build, drawn and measured) and the pictures from it |
+| `sweep.py`, `timelapse.py`, `compose.py` | The sweep, the timelapse and gallery (each state a build, drawn and measured), and the pictures from them |
 
 ## What it shows, and what holds it
 
@@ -53,8 +86,8 @@ sweep wrote, the "placed by hand" count too (`hand_placed`).
 - **What it cost**: the build nodes that ran again of the total, and the build's time on the
   machine that ran it (a time's band is wide: it is the machine's), the north change built straight
   after the base on one store, as the commands above do.
-- **The same text gives the same world**: the base built on a fresh store gives the build digest
-  the sweep's did (`820223d9…`, run records of 2026-11-25; spec/build.md 12).
+- **The same text gives the same world**: the base built on two fresh stores, by the sweep and by
+  the timelapse, gives one build digest (run records of 2026-11-25; spec/build.md 12).
 
 ## The look
 

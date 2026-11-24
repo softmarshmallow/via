@@ -11,11 +11,20 @@ pack       = "packs/demo.toml"                # Kenney's kit and the starter pac
 # Every one is laid by a step or a scatter from the lines above, so a change to a line is a change
 # to everything that follows from it, and nothing else (changes/, the sweep).
 
+# ------------------------------------------------------------------------------------------ the knobs
+# Each knob of the demo is one line, here or in a layer (docs/design/demo.md, "The knobs"): these
+# two, the stream's width, the high street's path, the town's style (layers/town.toml, the rows
+# step's `params`), what the woods are (layers/growth.toml), the seed, and the kit (packs/demo.toml).
+
+[let]
+relief = 2.2                                  # metres of swell on the valley's floor
+woods  = 0                                    # more wood (to 0.4) or less (to -0.4)
+
 # ------------------------------------------------------------------------------------------ the land
 
 [field.height]                                # a valley: the stream low in the south, the town on the
 role = "surface"                              # gentle slope above it, wooded hills behind (to 20 m) and either side
-base = "= 18 + 0.02 * y + 0.0026 * pow(max(0, 64 - y), 2) + 0.004 * pow(max(0, y - 250), 2) + 0.006 * pow(max(0, abs(x - 240) - 210), 2) + 2.2 * fbm(160, 3, seed = 'hills') + 0.4 * fbm(30, 2, seed = 'grain')"
+base = "= 18 + 0.02 * y + 0.0026 * pow(max(0, 64 - y), 2) + 0.004 * pow(max(0, y - 250), 2) + 0.006 * pow(max(0, abs(x - 240) - 210), 2) + relief * fbm(160, 3, seed = 'hills') + 0.4 * fbm(30, 2, seed = 'grain')"
 
 [field.water]                                 # lib/water's convention: dry, it is the ground
 tags = ["water_level"]
@@ -27,7 +36,7 @@ base = "= 0"
 
 [field.cover]                                 # where a wood stands, 0 to 1: patches away from the town,
 tags = ["cover"]                              # none on the water or its banks
-base = "= smoothstep(-0.05, 0.25, fbm(150, 3, seed = 'woods') - 0.05 + 0.45 * smoothstep(40, 90, dist('kind:main_street', 90)) + 0.6 * smoothstep(195, 225, abs(x - 240))) * smoothstep(8, 16, dist('kind:beck', 20))"
+base = "= smoothstep(-0.05, 0.25, fbm(150, 3, seed = 'woods') - 0.05 + woods + 0.45 * smoothstep(40, 90, dist('kind:main_street', 90)) + 0.6 * smoothstep(195, 225, abs(x - 240))) * smoothstep(8, 16, dist('kind:beck', 20))"
 
 # ------------------------------------------------------------------------------------------ the stream
 

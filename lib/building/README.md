@@ -619,6 +619,10 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
     back, or along a side where the back is too short for a landing, the run and a landing past
     its head. A lot no side of which holds the
     stairwell is refused (`row_stair`).
+  - *A town's style, once* (row.py rule 12, D of `docs/plan-fixes.md`). The rows step's `params`
+    may give `kit`, `depth`, `widths`, `heights`, `roof`, `fill` and `ground`: each row's where it
+    writes none. So a town's style is one line of its world, and a row that writes its own keeps
+    it. A row's `depth` defaults to 0, which is the step's, else 4.
   - *Two rows at a corner.* A lot that stands where another row's does is refused and said
     (`row_meets`). The block has no feature of its own yet: the author still writes where each
     side's row starts and ends.

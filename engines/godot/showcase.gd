@@ -7,10 +7,15 @@ extends Node
 ## loader (addons/via_loader), so what is drawn is the build; nothing is added to it.
 ##
 ##   godot --path engines/godot --rendering-method forward_plus res://showcase.tscn -- \
-##       --build DIR --out FILE.png [--pack DIR] [--bookmark NAME | --eye X,Y,Z --at X,Y,Z]
-##       [--size W,H] [--fov DEGREES] [--sun BEARING,ELEVATION] [--option NAME=VALUE ...]
+##       --build DIR --out FILE.png [--pack DIR] [--bookmark NAME | --eye X,Y,Z --at X,Y,Z
+##       | --orbit CX,CY,CZ,RADIUS,HEIGHT,FROM,TO,FRAMES] [--size W,H] [--fov DEGREES]
+##       [--sun BEARING,ELEVATION] [--option NAME=VALUE ...]
 ##
-## Coordinates are the world's (x east, y north, z up, metres). Exit 0 when the picture is written.
+## Coordinates are the world's (x east, y north, z up, metres). `--orbit` draws FRAMES pictures from
+## one load of the build: an eye RADIUS metres from (CX, CY) at height HEIGHT, at bearings from FROM
+## to TO degrees (clockwise from north; TO itself not drawn, so runs that share their ends join),
+## each looking at (CX, CY, CZ); `--out` then holds `%03d`, the frame's number. Exit 0 when every
+## picture is written.
 
 const Loader := preload("res://addons/via_loader/loader.gd")
 const Rig := preload("res://rig.gd")
@@ -30,6 +35,7 @@ var fov := 55.0
 var sun_bearing := 250.0
 var sun_elevation := 24.0
 var options := {}
+var orbit = null
 
 
 func _ready() -> void:
@@ -61,7 +67,7 @@ func _read_arguments() -> String:
 	var n := 0
 	while n < args.size():
 		var a := args[n]
-		if not a in ["--build", "--out", "--pack", "--bookmark", "--eye", "--at", "--size", "--fov", "--sun", "--option"]:
+		if not a in ["--build", "--out", "--pack", "--bookmark", "--eye", "--at", "--orbit", "--size", "--fov", "--sun", "--option"]:
 			return "unknown argument `%s`" % a
 		if n + 1 >= args.size():
 			return "`%s` takes a value" % a
@@ -79,6 +85,13 @@ func _read_arguments() -> String:
 					eye = p
 				else:
 					at = p
+			"--orbit":
+				var o := v.split(",")
+				if o.size() != 8 or not Array(o).all(func(t): return t.is_valid_float()):
+					return "--orbit takes CX,CY,CZ,RADIUS,HEIGHT,FROM,TO,FRAMES, not `%s`" % v
+				orbit = Array(o).map(func(t): return float(t))
+				if orbit[7] < 1:
+					return "--orbit draws one frame or more"
 			"--size":
 				var p := v.split(",")
 				if p.size() != 2 or not (p[0].is_valid_int() and p[1].is_valid_int()):
@@ -106,8 +119,10 @@ func _read_arguments() -> String:
 		return "--build and --out are required"
 	if (eye == null) != (at == null):
 		return "--eye and --at go together"
-	if bookmark == "" and eye == null:
-		return "name a --bookmark, or give --eye and --at"
+	if bookmark == "" and eye == null and orbit == null:
+		return "name a --bookmark, give --eye and --at, or an --orbit"
+	if orbit != null and not out.contains("%03d"):
+		return "with --orbit, --out holds %03d, the frame's number"
 	return ""
 
 
@@ -196,6 +211,30 @@ func _run() -> void:
 	vp.add_child(root)
 	var cam := Camera3D.new()
 	vp.add_child(cam)
+	if orbit != null:
+		cam.fov = fov
+		cam.near = 0.1
+		cam.far = 4000.0
+		cam.make_current()
+		var n := int(orbit[7])
+		DirAccess.make_dir_recursive_absolute(out.get_base_dir())
+		for k in n:
+			var b := deg_to_rad(orbit[5] + (orbit[6] - orbit[5]) * k / float(n))
+			var e := Rig.g(orbit[0] + orbit[3] * sin(b), orbit[1] + orbit[3] * cos(b), orbit[4])
+			cam.look_at_from_position(e, Rig.g(orbit[0], orbit[1], orbit[2]), Vector3.UP)
+			# The first frame lets shadows and occlusion settle; later ones move a little each.
+			for f in (SETTLE_FRAMES if k == 0 else 6):
+				await RenderingServer.frame_post_draw
+			var im := vp.get_texture().get_image()
+			im.convert(Image.FORMAT_RGB8)
+			var file := out.replace("%03d", "%03d" % k)
+			if im.save_png(file) != OK:
+				printerr("showcase: cannot write %s" % file)
+				get_tree().quit(1)
+				return
+		print("showcase: %d frames, %s" % [n, out])
+		get_tree().quit(0)
+		return
 	if bookmark != "":
 		var found: Camera3D = null
 		for c in root.get_node("bookmarks").get_children():

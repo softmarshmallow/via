@@ -1,6 +1,7 @@
-"""The demo's pictures from a sweep (sweep.py's OUT): the hero still and the sweep as video.
+"""The demo's pictures: from a sweep (sweep.py's OUT) the hero still and the sweep as video; from a
+timelapse (timelapse.py's OUT) the gallery of knobs and the timelapse as video.
 
-    python3 examples/demo/compose.py OUT [--hero-to FILE.png] [--video-to FILE.mp4] [--gif-to FILE.gif]
+    python3 examples/demo/compose.py OUT
 
 - **The hero** (`OUT/hero.png`): the base and one step side by side, the one line that differs
   between them, and the numbers the measures read from the two builds. Every number is a measure
@@ -129,11 +130,105 @@ def video(out, folder, n):
     return mp4, gif
 
 
+def knob_text(e):
+    """A knob's one line, with its table where it has one: `[let] woods = 0.35`."""
+    return (e["table"] + " " if e.get("table") else "") + e["line"]
+
+
+def gallery(out, tl):
+    """The base and each knob alone, 5 across, each lettered with its one line and its numbers."""
+    tiles = [("the world as written", None, json.loads((out / "measures" / "base.json").read_text()),
+              out / "frames" / "g_base.png")]
+    tiles += [(g["says"], knob_text(g), g["measures"], out / "frames" / f"g_{g['knob']}.png") for g in tl["gallery"]]
+    cols, tw, th, pad, gap = 5, 720, 405, 64, 20
+    rows = (len(tiles) + cols - 1) // cols
+    W = pad * 2 + cols * tw + (cols - 1) * gap
+    top, cap = 230, 120
+    H = top + rows * (th + cap + gap) + 110
+    img = Image.new("RGB", (W, H), PAPER)
+    d = ImageDraw.Draw(img)
+    d.text((pad, 52), "One world, one line at a time.", font=font(SANS, 76, 1), fill=INK)
+    d.text((pad, 148), f"The same base with each of its knobs turned alone: {len(tiles) - 1} one-line edits, each a "
+           "real build, no house or tree placed by hand.", font=font(SANS, 34), fill=DIM)
+    mono, big, small = font(MONO, 24), font(SANS, 30, 1), font(SANS, 22)
+    for i, (says, text, m, file) in enumerate(tiles):
+        x = pad + (i % cols) * (tw + gap)
+        y = top + (i // cols) * (th + cap + gap)
+        im = Image.open(file).convert("RGB").resize((tw, th), Image.LANCZOS)
+        img.paste(im, (x, y))
+        d.text((x, y + th + 12), says, font=big, fill=INK)
+        if text:
+            d.text((x, y + th + 54), text, font=mono, fill=GREEN)
+        nums = (f"{m['buildings']} houses \u00b7 {thousands(m['trees'])} trees \u00b7 {m['warnings']} warnings")
+        d.text((x, y + th + 88), nums, font=small, fill=DIM)
+    godot = ".".join(tl["godot"].split(".")[:3])
+    d.text((pad, H - 70), "Kenney's Modular Buildings (CC0) at a person's size and via's starter trees, drawn in Godot "
+           f"{godot} from each build. Every number is a measure: examples/demo.", font=font(SANS, 24), fill=DIM)
+    img.save(out / "gallery.png")
+    return out / "gallery.png"
+
+
+def timelapse(out, tl):
+    """The states' orbit frames in order, each state's last `fade` frames blended into the next's
+    first, lettered with the knobs turned so far."""
+    folder = out / "lettered"
+    folder.mkdir(exist_ok=True)
+    mono, sans, small = font(MONO, 34), font(SANS, 34, 1), font(SANS, 26)
+    states, fade, per = tl["states"], tl["fade"], tl["per"]
+    k = 0
+    for si, st in enumerate(states):
+        nxt = states[si + 1] if si + 1 < len(states) else None
+        for f in range(per):
+            img = Image.open(out / "frames" / f"{st['name']}_{f:03d}.png").convert("RGB")
+            if f < fade and si > 0:
+                prev = states[si - 1]
+                back = Image.open(out / "frames" / f"{prev['name']}_{per + f:03d}.png").convert("RGB")
+                img = Image.blend(back, img, (f + 1) / (fade + 1))
+            d = ImageDraw.Draw(img, "RGBA")
+            # Through a blend the panel says the state the picture mostly is: the one before until
+            # half way (D's review).
+            shown = si - 1 if (si > 0 and f < fade // 2) else si
+            st_shown = states[shown]
+            turned = [s for s in states[1:shown + 1]]
+            h = 70 + 44 * max(1, len(turned))
+            m = st_shown["measures"]
+            foot = (f"{m['buildings']} houses \u00b7 {thousands(m['trees'])} trees \u00b7 "
+                    f"{m['warnings']} warnings \u00b7 built in {m['build_ms'] / 1000:.0f} s")
+            wide = max([d.textlength(knob_text(s2), font=mono) for s2 in turned] + [d.textlength(foot, font=small), 520])
+            d.rounded_rectangle((36, 36, 36 + 48 + wide, 36 + h + 56), 16, fill=(0, 0, 0, 140))
+            d.text((60, 52), "via: the knobs turned so far", font=small, fill=(220, 220, 220))
+            if not turned:
+                d.text((60, 92), "the world as written", font=mono, fill=(255, 255, 255))
+            for j, s2 in enumerate(turned):
+                colour = (140, 230, 160) if j == len(turned) - 1 else (200, 200, 200)
+                d.text((60, 92 + 44 * j), knob_text(s2), font=mono, fill=colour)
+            d.text((60, 36 + h + 14), foot, font=small, fill=(230, 230, 230))
+            if turned:
+                d.text((img.width - 60 - d.textlength(st_shown["says"], font=sans), img.height - 84),
+                       st_shown["says"], font=sans, fill=(255, 255, 255, 230))
+            img.save(folder / f"{k:03d}.png")
+            k += 1
+    mp4, gif = out / "timelapse.mp4", out / "timelapse.gif"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", "12", "-i", str(folder / "%03d.png"),
+                    "-vf", "scale=1280:-2:flags=lanczos,fps=24,format=yuv420p", "-c:v", "libx264", "-crf", "26",
+                    "-preset", "slow", "-movflags", "+faststart", str(mp4)], check=True)
+    # The GIF is a preview for where video does not play: smaller and slower to load than the MP4.
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", "12", "-i", str(folder / "%03d.png"),
+                    "-vf", "fps=8,scale=560:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer:bayer_scale=4",
+                    "-loop", "0", str(gif)], check=True)
+    return mp4, gif
+
+
 def main(argv):
     if len(argv) != 2:
         print(__doc__.split("\n\n")[1], file=sys.stderr)
         return 2
     out = Path(argv[1]).resolve()
+    if (out / "timelapse.json").exists():
+        tl = json.loads((out / "timelapse.json").read_text())
+        print("compose:", gallery(out, tl))
+        print("compose:", *timelapse(out, tl))
+        return 0
     sweep = json.loads((out / "sweep.json").read_text())
     print("compose:", hero(out, sweep))
     folder, n = frames(out, sweep)

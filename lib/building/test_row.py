@@ -848,3 +848,24 @@ class Widths(unittest.TestCase):
         with self.assertRaises(R["ParamError"]) as c:
             self.lay(80000, widths=[3, 0])
         self.assertEqual(c.exception.key, "widths")
+
+
+class Style(unittest.TestCase):
+    """Rule 12: the step's params are every row's style where it leaves it unset."""
+
+    def test_params_fill_what_a_row_leaves_unset(self):
+        rows = [("a", [(0, 0)], {"kit": "", "depth": 0, "widths": [], "heights": [], "roof": ""}),
+                ("b", [(0, 0)], {"kit": "", "depth": 2, "widths": [3], "heights": [], "roof": "hip"})]
+        got = dict((n, a) for n, _, a in R["styled"](rows, {"kit": "k", "depth": 3, "widths": [1, 2], "roof": "flat"}))
+        self.assertEqual((got["a"]["kit"], got["a"]["depth"], got["a"]["widths"], got["a"]["roof"]), ("k", 3, [1, 2], "flat"))
+        self.assertEqual((got["b"]["depth"], got["b"]["widths"], got["b"]["roof"]), (2, [3], "hip"))   # its own kept
+        self.assertEqual(got["a"]["heights"], [])                    # not given: unset still
+
+    def test_depth_defaults_to_four(self):
+        (_, _, a), = R["styled"]([("a", [(0, 0)], {"depth": 0})], {})
+        self.assertEqual(a["depth"], 4)
+
+    def test_a_row_that_says_its_lots_or_storeys_keeps_them(self):
+        rows = [("a", [(0, 0)], {"widths": [], "lots": [{"bays": 2}], "heights": [], "storeys": 2})]
+        (_, _, a), = R["styled"](rows, {"widths": [1, 2, 3], "heights": [4, 5]})
+        self.assertEqual((a["widths"], a["heights"]), ([], []))

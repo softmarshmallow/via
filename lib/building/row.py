@@ -91,8 +91,16 @@ Rules (ours):
    and `left`, metres, in that order). So a
    longer frontage gets more lots, and the lots before keep their names and widths.
 
-Codes are `step.<id>.<code>`: `params` (error: a row's attribute, or a kit with no bay; said at
-that row, and the other rows are laid), `row_open`, `row_stair`, `row_meets`, `row_bent` and
+12. **A town's style, written once** (D of docs/plan-fixes.md). The step's `params` may give any of
+   `kit`, `depth`, `widths`, `heights`, `roof`, `fill` and `ground`: each is every row's where the
+   row leaves it unset (an empty word or list; `depth` 0, its default, is 4 where the step gives
+   none). So one line of a world, the step's `params`, sets the style of every row of a town, and
+   a row that writes its own keeps it: a row that writes `lots` takes no `widths`, and one that
+   writes `storeys` (other than 1, its default) no `heights`. Another key in `params` is `params`
+   (error), and then no row is laid.
+
+Codes are `step.<id>.<code>`: `params` (error: a row's attribute, or a kit with no bay, said at
+that row, and the other rows are laid; or a key the step's `params` does not take, and no row is), `row_open`, `row_stair`, `row_meets`, `row_bent` and
 `row_short` (warnings: a row's line that bends or holds no lot is not laid, the others are; it is
 not the row's text but a street moved under it), `rows` (info, what was returned).
 
@@ -519,8 +527,36 @@ def read_kit(step, taxon):
     return viasdk.kit(step, taxon)
 
 
+STYLE = ("kit", "depth", "widths", "heights", "roof", "fill", "ground")
+
+
+def styled(rows, params):
+    """Rule 12: each row with the step's `params` where it leaves a style key unset."""
+    out = []
+    for name, pts, attrs in rows:
+        a = dict(attrs)
+        for k in STYLE:
+            if k in params and a.get(k) in (None, "", [], {}, 0):
+                # A row that says its lots takes no widths, and one that writes its storeys no
+                # heights: each is the row's own (D's review: given them, it was refused or overruled).
+                if (k == "widths" and a.get("lots")) or (k == "heights" and a.get("storeys") not in (None, 1)):
+                    continue
+                a[k] = params[k]
+        if a.get("depth") in (None, 0):
+            a["depth"] = 4
+        out.append((name, pts, a))
+    return out
+
+
 def generate(step):
-    rows = read_rows(step)
+    params = step.params or {}
+    extra = sorted(set(params) - set(STYLE))
+    if extra:
+        step.error("params", "step." + step.id, f"`{extra[0]}` is not a key the rows step takes in `params`",
+                   "write any of " + ", ".join(f"`{k}`" for k in STYLE) + ": each row's where it leaves it unset",
+                   explain=EXPLAIN["params"], data={"attribute": extra[0]})
+        return
+    rows = styled(read_rows(step), params)
     facts = {}
 
     def kits(taxon):

@@ -1,79 +1,45 @@
-# The rows of houses, one along each frontage line of world.toml (row.py rules 10 and 11): each fills
-# its line with houses one, two or three blocks wide, three blocks deep, one to three storeys, on a
-# level plot (lay.py rule 19); picked by the row's name, so the same every build, and neighbours
-# differ. A party wall is blank; a front, a back and an open end have windows.
+# The rows of houses, one along each frontage line of world.toml (row.py rules 10 and 11). Each row
+# writes only its line; its style is the rows step's (rule 12, below): houses one to three blocks
+# wide, three deep, one to three storeys, on a level plot (lay.py rule 19), picked by the row's
+# name, so the same every build, and neighbours differ. A party wall is blank; a front, a back and
+# an open end have windows.
 
 [feature.row_wn]
 kind     = "row"
 on       = { ref = "front_wn", t = 0 }   # the row's point: its line's start
 along    = "front_wn"
-kit      = "structure/kenney"
-depth    = 3
-widths   = [1, 2, 3]
-heights  = [1, 2, 3]
-roof     = "flat"
-ground   = "level"
 porch    = 1
 walk_out = 2
-fill     = [{ faces = ["front", "back", "end"], pattern = ["window", "windows", "wide"] }]
 
 [feature.row_mn]
 kind     = "row"
 on       = { ref = "front_mn", t = 0 }   # the row's point: its line's start
 along    = "front_mn"
-kit      = "structure/kenney"
-depth    = 3
-widths   = [1, 2, 3]
-heights  = [2, 3]
-roof     = "flat"
-ground   = "level"
 porch    = 1
 walk_out = 2
-fill     = [{ faces = ["front", "back", "end"], pattern = ["window", "windows", "wide"] }]
 
 [feature.row_s]
 kind     = "row"
 on       = { ref = "front_s", t = 0 }   # the row's point: its line's start
 along    = "front_s"
 reverse  = true
-kit      = "structure/kenney"
-depth    = 3
-widths   = [1, 2, 3]
-heights  = [1, 2, 3]
-roof     = "flat"
-ground   = "level"
 porch    = 1
 walk_out = 2
-fill     = [{ faces = ["front", "back", "end"], pattern = ["window", "windows", "wide"] }]
 
 [feature.row_lw]
 kind     = "row"
 on       = { ref = "front_lw", t = 0 }   # the row's point: its line's start
 along    = "front_lw"
-kit      = "structure/kenney"
-depth    = 3
-widths   = [1, 2]
-heights  = [1, 2]
-roof     = "flat"
-ground   = "level"
 porch    = 1
 walk_out = 2
-fill     = [{ faces = ["front", "back", "end"], pattern = ["window", "windows", "wide"] }]
 
 [feature.row_le]
 kind     = "row"
 on       = { ref = "front_le", t = 0 }   # the row's point: its line's start
 along    = "front_le"
 reverse  = true
-kit      = "structure/kenney"
-depth    = 3
-widths   = [1, 2]
-heights  = [1, 2]
-roof     = "flat"
-ground   = "level"
 porch    = 1
 walk_out = 2
-fill     = [{ faces = ["front", "back", "end"], pattern = ["window", "windows", "wide"] }]
 
 # ------------------------------------------------------------------------------------------ steps
 
@@ -81,3 +47,6 @@ fill     = [{ faces = ["front", "back", "end"], pattern = ["window", "windows", 
 when    = "generate"
 worker  = true
 command = ["python", "-m", "viasdk", "lib:building/row.py"]
+# The town's style, one line (row.py rule 12): every row's kit, depth, widths and heights in blocks,
+# roof, ground and windows, where the row writes none.
+params  = { kit = "structure/kenney", depth = 3, widths = [1, 2, 3], heights = [1, 2, 3], roof = "flat", ground = "level", fill = [{ faces = ["front", "back", "end"], pattern = ["window", "windows", "wide"] }] }

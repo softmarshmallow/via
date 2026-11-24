@@ -40,6 +40,26 @@ the line that changed, and the build's own numbers.
 3. **The world itself** (`examples/demo`), a normal example: its README, its changes, its rows.
    What the demo claims is what its `expect.toml` holds.
 
+## The knobs (asked by the owner on 2026-11-25)
+
+"Not only simply offsetting the path": the owner asked that the demo turn as many of the world's
+knobs as it can, within the same base, so that a person sees at once a procedural framework, and
+that the camera orbit while the map changes, as a timelapse.
+
+- **One line a knob.** Each knob is one line of the world's text, in a change file of its own
+  (`changes/`): the land's swell and the woods' cover (two `[let]` names the formulas read), the
+  stream's width, the high street's path, the town's height and grain (the rows step's
+  `params`, one line for every row: row.py rule 12, new), what the woods are (the scatter's
+  `assets`), the seed. The town's style was written on each of five rows; rule 12 lets the rows
+  step give every row its style where the row writes none, so one line sets a town.
+- **The gallery** (`docs/reports/demo-knobs.png`): the base and each knob turned alone, from one
+  eye, each lettered with its line and its numbers.
+- **The timelapse** (`docs/reports/demo-timelapse.mp4`): the knobs turned one after another,
+  each state the base and the knobs so far (a `--change` each), built on one store; the camera on
+  one orbit round the valley's south (engines/godot/showcase.gd `--orbit`), each state on its own
+  arc and blended into the next over the frames they share, so the camera never stops and the map
+  changes under it.
+
 ## The world
 
 - **Kept from T1**: `examples/high_street`'s street of Kenney's kit at a person's size, rows that

@@ -292,4 +292,29 @@ Changed so far:
   built), and the loader leaking one object per tree at exit (filed). It confirmed every other
   figure on the hero against the builds, no tree in a house, on a plot or a verge, the showcase
   adding nothing but light and sky, and the same build digest on a fresh store.
+- **D's knobs, 2026-11-25.** The owner: "not only simply offsetting the path", parameterize as
+  much as can be within the same base, so that a person sees at once a powerful procedural
+  framework; and the camera to orbit while the map changes, as a timelapse. Nine knobs, one line
+  each (`examples/demo/changes/`): the stream's width, the high street's path, the houses' grain
+  and the town's height (the rows step's `params`: row.py rule 12, new, so one line styles every
+  row), the land's swell and the woods' cover (two `[let]` names), what the woods are, the seed,
+  and farmland. `timelapse.py` builds the base and the knobs turned one after another (eight
+  states) on one store and each knob alone, draws the states on one orbit
+  (`showcase.gd --orbit`, new), each state on its arc and blended into the next; `compose.py`
+  writes `docs/reports/demo-knobs.png` (the gallery) and `demo-timelapse.mp4`. Every state and
+  every knob builds with no warning; `expect.toml` holds a section a knob. Found on the way: a
+  hipped roof cannot be laid on a row of Kenney's houses (filed), and a 16 m swell after the
+  river, the high street, the grain and the height is refused (`authority.max_change`, four plots
+  past their 3 m): the land knob is 11 m. Rule 12 changed the demo's base (the lane's rows and the
+  north row east of the lane take the town's widths and heights): the hero's
+  sweep was run again, 54 houses to 52. realm, village, high_street and block hold every row with
+  rule 12 and `depth`'s new default.
+  The independent review found rule 12 overruling a row that writes its own `lots` (refused, both
+  keys) or `storeys` (given the step's `heights`): such a row now keeps them, with a test. It found
+  the 16 m refusal claimed of the grain alone (it is the timelapse's state after four knobs, four
+  plots), roofs called a knob, a stale protocol line, the base's change understated, the orbit
+  leaving the world's extent and showing its edge at the timelapse's ends (now 160 m out over
+  122 to 238 degrees, redrawn from the same builds), and the panel showing a knob before the
+  picture had blended into it (now at half way). Under the fixed rule the base builds the same
+  digest, so the builds stand.
 

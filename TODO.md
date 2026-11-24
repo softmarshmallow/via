@@ -1535,6 +1535,11 @@ open, and its place here is its destination.
       `examples/high_street` `module` the deeper houses reach the lane's first (2 `row_meets`).
       Owed: a frontage that starts where another row's depth ends (a row's `after`, or a
       `follows` span from a point). (From T1, 2026-11-24.)
+- [ ] **A hipped roof on a row of Kenney's houses cannot be laid**: Kenney's slanted roof is made
+      for a building two blocks deep in all, and a row's house is its two corner blocks and one
+      bay deep at the least (row.py rule 2), so `roof = "hip"` on `examples/demo`'s rows is
+      `roof_none` on every house and the flat roof is laid. Owed: a row whose depth counts its
+      corners, or a kit whose corner is no block. (From D, 2026-11-25.)
 - [ ] **A stair asked of a kit with none**: `lay` asks a stair of every building of two storeys
       (rule 3), and Kenney's blocks are closed, with no stair piece and no inside to climb, so
       `examples/high_street`'s pack states one that lays nothing. Owed: a kit of closed blocks

@@ -7,7 +7,7 @@
 #   python3.11 examples/demo/measure.py OUT/builds/y165 --base OUT/builds/base --run OUT/builds/y165.run.json --check north
 #
 # Protocol of the numbers below: macOS arm64 (Apple M4 Pro), release `via` built from 421f3c8 (`build_ms` of a build, `nodes_ran` the run record's `ran`: nodes run again, not counting the 70 or so only recomputed),
-# VIA_LIB=lib of that tree, Python 3.12 (sdk/python/.venv) for the steps, Kenney's models as
+# VIA_LIB=lib of 30bc488 with D's knobs (row.py rule 12, after its review's fix), Python 3.12 (sdk/python/.venv) for the steps, Kenney's models as
 # examples/borrowed/fetch.py fetches them and the starter pack's own. sweep.py's order on one fresh
 # store: the base (the high street at y = 125), then the step at 165 (`north`, which
 # changes/north.toml is), then 130, 135 ... 160, each a build of its own change, none `--against`.
@@ -15,6 +15,11 @@
 # Measured 2026-11-25 in one run. A band is the measured number: not a target, it says where
 # someone looks. A time's band is wide: it is the machine's, and the row says only that the build
 # finished in that time.
+#
+# The knobs (`knob_<name>` sections): each change file of changes/ turned alone, built by
+# timelapse.py on its own fresh store after its eight timelapse states, measured against that
+# store's base (the same world, the same build digest as the sweep's base:
+# 8199a6edc5115380...).
 
 
 # ------------------------------------------------------------------------------------------ base
@@ -34,7 +39,7 @@ band    = [5, 5]
 
 [base.buildings]
 measure = "buildings"
-band    = [57, 57]
+band    = [54, 54]
 
 [base.storeys_1]
 measure = "storeys_1"
@@ -42,7 +47,7 @@ band    = [17, 17]
 
 [base.storeys_2]
 measure = "storeys_2"
-band    = [22, 22]
+band    = [19, 19]
 
 [base.storeys_3]
 measure = "storeys_3"
@@ -54,19 +59,19 @@ band    = [0.0, 0.0]
 
 [base.doors]
 measure = "doors"
-band    = [57, 57]
+band    = [54, 54]
 
 [base.doors_on_street]
 measure = "doors_on_street"
-band    = [57, 57]
+band    = [54, 54]
 
 [base.trees]
 measure = "trees"
-band    = [2305, 2305]
+band    = [2310, 2310]
 
 [base.plants]
 measure = "plants"
-band    = [4067, 4067]
+band    = [4075, 4075]
 
 [base.trees_on_plots]
 measure = "trees_on_plots"
@@ -74,7 +79,7 @@ band    = [0, 0]
 
 [base.instances]
 measure = "instances"
-band    = [6790, 6790]
+band    = [6738, 6738]
 
 [base.row_meets]
 measure = "row_meets"
@@ -118,7 +123,7 @@ band    = [20, 20]
 
 [base.written_numbers]
 measure = "written_numbers"
-band    = [90, 90]
+band    = [60, 60]
 
 [base.build_ms]
 measure = "build_ms"
@@ -139,7 +144,7 @@ band    = [0, 0]
 
 [north.buildings]
 measure = "buildings"
-band    = [53, 53]
+band    = [52, 52]
 
 [north.buildings_added]
 measure = "buildings_added"
@@ -147,11 +152,11 @@ band    = [0, 0]
 
 [north.buildings_removed]
 measure = "buildings_removed"
-band    = [4, 4]
+band    = [2, 2]
 
 [north.buildings_moved]
 measure = "buildings_moved"
-band    = [53, 53]
+band    = [52, 52]
 
 [north.buildings_kept]
 measure = "buildings_kept"
@@ -163,7 +168,7 @@ band    = [0.0, 0.0]
 
 [north.doors_on_street]
 measure = "doors_on_street"
-band    = [53, 53]
+band    = [52, 52]
 
 [north.doors_off_street]
 measure = "doors_off_street"
@@ -179,7 +184,7 @@ band    = [331, 331]
 
 [north.trees_removed]
 measure = "trees_removed"
-band    = [250, 250]
+band    = [255, 255]
 
 [north.trees_kept]
 measure = "trees_kept"
@@ -191,12 +196,336 @@ band    = [0, 0]
 
 [north.nodes]
 measure = "nodes"
-band    = [5164, 5164]
+band    = [5069, 5069]
 
 [north.nodes_ran]
 measure = "nodes_ran"
-band    = [4978, 4978]
+band    = [4883, 4883]
 
 [north.build_ms]
 measure = "build_ms"
 band    = [0, 300000]
+
+
+# ------------------------------------------------------------------------------------------ knob_river
+# the stream, 22 m across: [feature.stream] width = 22
+
+[knob_river.errors]
+measure = "errors"
+band    = [0, 0]
+
+[knob_river.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[knob_river.buildings]
+measure = "buildings"
+band    = [54, 54]
+
+[knob_river.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[knob_river.doors_on_street]
+measure = "doors_on_street"
+band    = [54, 54]
+
+[knob_river.doors_off_street]
+measure = "doors_off_street"
+band    = [0, 0]
+
+[knob_river.trees]
+measure = "trees"
+band    = [2256, 2256]
+
+[knob_river.trees_on_plots]
+measure = "trees_on_plots"
+band    = [0, 0]
+
+
+# ------------------------------------------------------------------------------------------ knob_north
+# the high street, 40 m north: [feature.high_street] path = [[45, 165], [435, 165]]
+
+[knob_north.errors]
+measure = "errors"
+band    = [0, 0]
+
+[knob_north.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[knob_north.buildings]
+measure = "buildings"
+band    = [52, 52]
+
+[knob_north.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[knob_north.doors_on_street]
+measure = "doors_on_street"
+band    = [52, 52]
+
+[knob_north.doors_off_street]
+measure = "doors_off_street"
+band    = [0, 0]
+
+[knob_north.trees]
+measure = "trees"
+band    = [2386, 2386]
+
+[knob_north.trees_on_plots]
+measure = "trees_on_plots"
+band    = [0, 0]
+
+
+# ------------------------------------------------------------------------------------------ knob_grand
+# the houses, all three blocks wide: [step.rows.params] widths = [3]
+
+[knob_grand.errors]
+measure = "errors"
+band    = [0, 0]
+
+[knob_grand.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[knob_grand.buildings]
+measure = "buildings"
+band    = [42, 42]
+
+[knob_grand.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[knob_grand.doors_on_street]
+measure = "doors_on_street"
+band    = [42, 42]
+
+[knob_grand.doors_off_street]
+measure = "doors_off_street"
+band    = [0, 0]
+
+[knob_grand.trees]
+measure = "trees"
+band    = [2307, 2307]
+
+[knob_grand.trees_on_plots]
+measure = "trees_on_plots"
+band    = [0, 0]
+
+
+# ------------------------------------------------------------------------------------------ knob_city
+# the town, four to six storeys: [step.rows.params] heights = [4, 5, 6]
+
+[knob_city.errors]
+measure = "errors"
+band    = [0, 0]
+
+[knob_city.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[knob_city.buildings]
+measure = "buildings"
+band    = [54, 54]
+
+[knob_city.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[knob_city.doors_on_street]
+measure = "doors_on_street"
+band    = [54, 54]
+
+[knob_city.doors_off_street]
+measure = "doors_off_street"
+band    = [0, 0]
+
+[knob_city.trees]
+measure = "trees"
+band    = [2310, 2310]
+
+[knob_city.trees_on_plots]
+measure = "trees_on_plots"
+band    = [0, 0]
+
+
+# ------------------------------------------------------------------------------------------ knob_hills
+# the land, rolling hills: [let] relief = 11
+
+[knob_hills.errors]
+measure = "errors"
+band    = [0, 0]
+
+[knob_hills.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[knob_hills.buildings]
+measure = "buildings"
+band    = [54, 54]
+
+[knob_hills.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[knob_hills.doors_on_street]
+measure = "doors_on_street"
+band    = [54, 54]
+
+[knob_hills.doors_off_street]
+measure = "doors_off_street"
+band    = [0, 0]
+
+[knob_hills.trees]
+measure = "trees"
+band    = [2310, 2310]
+
+[knob_hills.trees_on_plots]
+measure = "trees_on_plots"
+band    = [0, 0]
+
+
+# ------------------------------------------------------------------------------------------ knob_forest
+# the woods close in: [let] woods = 0.35
+
+[knob_forest.errors]
+measure = "errors"
+band    = [0, 0]
+
+[knob_forest.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[knob_forest.buildings]
+measure = "buildings"
+band    = [54, 54]
+
+[knob_forest.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[knob_forest.doors_on_street]
+measure = "doors_on_street"
+band    = [54, 54]
+
+[knob_forest.doors_off_street]
+measure = "doors_off_street"
+band    = [0, 0]
+
+[knob_forest.trees]
+measure = "trees"
+band    = [2758, 2758]
+
+[knob_forest.trees_on_plots]
+measure = "trees_on_plots"
+band    = [0, 0]
+
+
+# ------------------------------------------------------------------------------------------ knob_pines
+# the woods, all pines: [scatter.woods] assets = ["s_tree_pine"]
+
+[knob_pines.errors]
+measure = "errors"
+band    = [0, 0]
+
+[knob_pines.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[knob_pines.buildings]
+measure = "buildings"
+band    = [54, 54]
+
+[knob_pines.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[knob_pines.doors_on_street]
+measure = "doors_on_street"
+band    = [54, 54]
+
+[knob_pines.doors_off_street]
+measure = "doors_off_street"
+band    = [0, 0]
+
+[knob_pines.trees]
+measure = "trees"
+band    = [2310, 2310]
+
+[knob_pines.trees_on_plots]
+measure = "trees_on_plots"
+band    = [0, 0]
+
+
+# ------------------------------------------------------------------------------------------ knob_seed
+# the seed, drawn again: seed = 7
+
+[knob_seed.errors]
+measure = "errors"
+band    = [0, 0]
+
+[knob_seed.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[knob_seed.buildings]
+measure = "buildings"
+band    = [54, 54]
+
+[knob_seed.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[knob_seed.doors_on_street]
+measure = "doors_on_street"
+band    = [54, 54]
+
+[knob_seed.doors_off_street]
+measure = "doors_off_street"
+band    = [0, 0]
+
+[knob_seed.trees]
+measure = "trees"
+band    = [2210, 2210]
+
+[knob_seed.trees_on_plots]
+measure = "trees_on_plots"
+band    = [0, 0]
+
+
+# ------------------------------------------------------------------------------------------ knob_farmland
+# the woods cleared: [let] woods = -0.35
+
+[knob_farmland.errors]
+measure = "errors"
+band    = [0, 0]
+
+[knob_farmland.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[knob_farmland.buildings]
+measure = "buildings"
+band    = [54, 54]
+
+[knob_farmland.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[knob_farmland.doors_on_street]
+measure = "doors_on_street"
+band    = [54, 54]
+
+[knob_farmland.doors_off_street]
+measure = "doors_off_street"
+band    = [0, 0]
+
+[knob_farmland.trees]
+measure = "trees"
+band    = [1524, 1524]
+
+[knob_farmland.trees_on_plots]
+measure = "trees_on_plots"
+band    = [0, 0]
