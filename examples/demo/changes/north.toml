@@ -1,0 +1,6 @@
+# The demo's one line (docs/design/demo.md): the high street 40 m further north. Nothing else is
+# written: its rows follow it (row.py rule 10) and re-fill (rule 11), the lane starts where it now
+# meets it, the woods give way where houses now stand and grow where they no longer do, the ground is
+# levelled under every house. The sweep (sweep.py) moves the same line in even steps.
+[feature.high_street]
+path = [[45, 165], [435, 165]]

@@ -261,4 +261,35 @@ Changed so far:
   where two plots' levels meet across one post. With those, the base has no warning, and `module`
   none but its nine revised assets and two `row_meets`. Also mended, from F6's review: a pack whose
   `root` climbs to the working directory was `build.pack_root_far` (case `build/pack_root_climbs`).
+- **D, 2026-11-25.** Built as `docs/design/demo.md` says, with one change of what moves: the sweep
+  moves the high street, not the lane's foot (moving the foot alone turned the lane, and lay roofs
+  no turned house: 42 crowded pieces and a house with no roof). `examples/demo`: a market town of
+  Kenney's kit in a wooded valley, its pack two includes (Kenney's at a person's size and the
+  starter pack's trees, spec/assets.md 2.8), the town in five rows that follow two streets, woods,
+  single trees and underbrush scattered by cover and kept off every house's plot (the starter
+  pack's plants claim no ground, so the first build stood trees on roofs). `engines/godot/showcase.gd`
+  draws a build to be looked at (Forward+, a low warm sun, the sky's light, a filmic tone map,
+  ambient occlusion, a little haze), apart from the sheet's instrument rig. `sweep.py` builds the
+  high street at y = 125 to 165 in steps of 5 on one store, draws each from one camera and measures
+  each; `compose.py` letters the frames into `docs/reports/demo-sweep.mp4` and `.gif` and composes
+  `docs/reports/demo-hero.png` from the base and the step at 165, every figure read from the
+  measures. The one line: 57 houses to 53, every one re-laid, every door on its street, 0 m2 of
+  overlap, 331 trees grew and 250 gave way and 2,055 stayed where they stood, none on a house's
+  plot, no warning; 4,978 of 5,164 build nodes ran again in 70 s. The base built on a fresh store
+  gives the sweep's build digest. `README.md` shows the hero. Building it found and mended: a pack whose root climbs to the
+  working directory taken for no path (`build.pack_root_far`), two plots side by side banking over
+  each other (`kind.plot`'s `flat`), the ground between two levelled houses read where it steps over
+  one post (check.py), a street's bed cut at its ends where the side hills began (the street
+  shortened, the hills moved out). Filed: the change report costs more than the build on a world
+  of this size (113 s of `write` against a 70 s build).
+  The independent review found the hero's arrow drawn as a missing glyph (the bold face has
+  none: "57 houses to 53" now), its "steps re-ran" counted after the step before the hero's and
+  not after the base, as the README's commands build it (the sweep now builds the hero's step
+  straight after the base: 4,978, the review's own figure; and they are build nodes, so said), "0
+  placed by hand" typed into the picture where every other figure was measured (now `hand_placed`,
+  a measure and a row), the trees' change put down to houses alone where half is the woods
+  following the street (said), the design note describing the lane's foot moved (marked what was
+  built), and the loader leaking one object per tree at exit (filed). It confirmed every other
+  figure on the hero against the builds, no tree in a house, on a plot or a verge, the showcase
+  adding nothing but light and sky, and the same build digest on a fresh store.
 

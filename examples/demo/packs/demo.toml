@@ -1,0 +1,39 @@
+# The demo's pack (docs/design/demo.md): two kits, each taken in whole under its prefix (spec/
+# assets.md 2.8). Kenney's Modular Buildings at a person's size, as examples/high_street states it,
+# and the shipped starter pack's trees, bushes and rocks. A kit is edited in its own pack.
+#
+#   via pack accept examples/demo/packs/demo.toml      # after a kit changes
+
+# A folder that holds both kits and their models: the repository's.
+root = "../../.."
+
+[include.k]                      # Kenney's kit: k_block, k_door, ... (structure/kenney)
+pack = "../../high_street/packs/kenney.toml"
+
+[include.s]                      # the starter pack: s_tree_oak, s_bush_round, ... (plant/...)
+pack = "../../../lib/packs/starter.toml"
+
+# The ground's paints. Both kits bind `grass`, each in its own colour: this pack's stands over both.
+[material.grass]
+colour = [0.24, 0.4, 0.15]
+
+[material.meadow]
+colour = [0.42, 0.46, 0.2]
+
+[material.earth]
+colour = [0.36, 0.27, 0.18]
+
+[material.gravel]
+colour = [0.42, 0.39, 0.34]
+
+[material.rock]
+colour = [0.45, 0.43, 0.4]
+
+[material.flags]
+colour = [0.62, 0.6, 0.56]
+
+[material.setts]
+colour = [0.36, 0.34, 0.33]
+
+[material.ground]
+colour = [0.45, 0.5, 0.4]

@@ -1,0 +1,23 @@
+# What grows: woods by cover, single trees in the open and in the town's gardens, underbrush. Each
+# gives way to the streets' and the stream's verges (role:keep_out), and to every house's plot (its
+# outline and 1.5 m round it, lay.py rule 19), read in its density: the starter pack's plants claim
+# no ground (`solidity = "none"`), so nothing else would keep them off a house. Where a house stands
+# no tree does, and where a house no longer stands a tree may.
+
+[scatter.woods]
+assets  = [{ id = "s_tree_oak", weight = 5 }, { id = "s_tree_pine", weight = 3 }, { id = "s_tree_oak_large", weight = 1 }]
+spacing = 6.5
+density = "= f('cover') * smoothstep(0, 1.5, dist('kind:plot', 3))"
+scale   = [0.8, 1.3]
+
+[scatter.open_trees]                          # single trees in fields and gardens
+assets  = [{ id = "s_tree_oak", weight = 3 }, { id = "s_tree_oak_large", weight = 1 }]
+spacing = 11
+density = "= 0.16 * (1 - f('cover')) * smoothstep(1, 3, dist('kind:plot', 4))"
+scale   = [0.8, 1.25]
+
+[scatter.underbrush]
+assets  = ["@plant/bush", "@plant/fern"]
+spacing = 5
+density = "= (0.4 * f('cover') + 0.05) * smoothstep(0, 1, dist('kind:plot', 2))"
+scale   = [0.7, 1.4]

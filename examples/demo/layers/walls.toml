@@ -1,0 +1,14 @@
+# lay walls every building the rows returned; check holds what lay laid.
+
+[step.lay]
+when     = "generate"
+worker   = true
+for_each = "kind:building"
+command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+
+[step.check]
+when    = "lint"
+worker  = true
+checks  = ["lay", "rows"]
+command = ["python", "-m", "viasdk", "lib:building/check.py"]
+params  = { kits = ["structure/kenney"] }

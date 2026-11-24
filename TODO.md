@@ -1228,6 +1228,16 @@ open, and its place here is its destination.
 
 ### The command (`crates/via-cli`)
 
+- [ ] **The Godot loader leaks one object per tree at exit**: every showcase run over
+      `examples/demo` warns that N objects leaked, N the build's tree count. Harmless for a
+      picture, not for an editor that loads builds again and again. (From D's review, 2026-11-25.)
+- [ ] **The change report costs more than the build on a world of thousands of instances.**
+      `examples/demo` (a 480 by 320 m town and woods, about 6,600 instances): a build that moves
+      the high street re-runs almost everything in about 70 s, and with `--against` the base its
+      `write` nodes (the change report) took 113 s more, against 5.5 s for a cold build's.
+      The demo's sweep builds without `--against` and compares by name in its measures. Owed: a
+      report whose cost follows what changed, not what exists. (From D of docs/plan-fixes.md,
+      2026-11-25.)
 - [ ] `via build` asks once per new `--change` to be trusted although every step is trusted and
   unchanged (hamlet trip 11, README "and once per --change"): decide whether a change that adds no
   step needs trust.

@@ -1,0 +1,202 @@
+# What a demo build measures (docs/design/demo.md; D of docs/plan-fixes.md). Measures, never bytes
+# (R15): each row names a measure of measure.py and the band it must fall in. The hero picture and
+# the sweep read every figure they show from these measures (compose.py). Taken by
+#
+#   python3 examples/demo/sweep.py OUT          # the base and every step, built, drawn, measured
+#   python3.11 examples/demo/measure.py OUT/builds/base --world examples/demo/world.toml --run OUT/builds/base.run.json --check base
+#   python3.11 examples/demo/measure.py OUT/builds/y165 --base OUT/builds/base --run OUT/builds/y165.run.json --check north
+#
+# Protocol of the numbers below: macOS arm64 (Apple M4 Pro), release `via` built from 421f3c8 (`build_ms` of a build, `nodes_ran` the run record's `ran`: nodes run again, not counting the 70 or so only recomputed),
+# VIA_LIB=lib of that tree, Python 3.12 (sdk/python/.venv) for the steps, Kenney's models as
+# examples/borrowed/fetch.py fetches them and the starter pack's own. sweep.py's order on one fresh
+# store: the base (the high street at y = 125), then the step at 165 (`north`, which
+# changes/north.toml is), then 130, 135 ... 160, each a build of its own change, none `--against`.
+# So `north` is the change built straight after the base, as README.md's commands build it.
+# Measured 2026-11-25 in one run. A band is the measured number: not a target, it says where
+# someone looks. A time's band is wide: it is the machine's, and the row says only that the build
+# finished in that time.
+
+
+# ------------------------------------------------------------------------------------------ base
+# The world as written: the high street at y = 125. Every house a row laid, every tree a scatter.
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[base.rows]
+measure = "rows"
+band    = [5, 5]
+
+[base.buildings]
+measure = "buildings"
+band    = [57, 57]
+
+[base.storeys_1]
+measure = "storeys_1"
+band    = [17, 17]
+
+[base.storeys_2]
+measure = "storeys_2"
+band    = [22, 22]
+
+[base.storeys_3]
+measure = "storeys_3"
+band    = [18, 18]
+
+[base.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[base.doors]
+measure = "doors"
+band    = [57, 57]
+
+[base.doors_on_street]
+measure = "doors_on_street"
+band    = [57, 57]
+
+[base.trees]
+measure = "trees"
+band    = [2305, 2305]
+
+[base.plants]
+measure = "plants"
+band    = [4067, 4067]
+
+[base.trees_on_plots]
+measure = "trees_on_plots"
+band    = [0, 0]
+
+[base.instances]
+measure = "instances"
+band    = [6790, 6790]
+
+[base.row_meets]
+measure = "row_meets"
+band    = [0, 0]
+
+[base.row_bent]
+measure = "row_bent"
+band    = [0, 0]
+
+[base.row_short]
+measure = "row_short"
+band    = [0, 0]
+
+[base.plot_lost]
+measure = "plot_lost"
+band    = [0, 0]
+
+[base.keep_out]
+measure = "keep_out"
+band    = [0, 0]
+
+[base.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[base.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[base.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[base.hand_placed]
+measure = "hand_placed"
+band    = [0, 0]
+
+[base.written_features]
+measure = "written_features"
+band    = [20, 20]
+
+[base.written_numbers]
+measure = "written_numbers"
+band    = [90, 90]
+
+[base.build_ms]
+measure = "build_ms"
+band    = [0, 300000]
+
+
+# ------------------------------------------------------------------------------------------ north
+# The one line: the high street 40 m north (changes/north.toml). Every house re-laid, every door on its
+# street, no overlap, no warning; trees grow where houses stood and give way where they now stand.
+
+[north.errors]
+measure = "errors"
+band    = [0, 0]
+
+[north.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[north.buildings]
+measure = "buildings"
+band    = [53, 53]
+
+[north.buildings_added]
+measure = "buildings_added"
+band    = [0, 0]
+
+[north.buildings_removed]
+measure = "buildings_removed"
+band    = [4, 4]
+
+[north.buildings_moved]
+measure = "buildings_moved"
+band    = [53, 53]
+
+[north.buildings_kept]
+measure = "buildings_kept"
+band    = [0, 0]
+
+[north.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[north.doors_on_street]
+measure = "doors_on_street"
+band    = [53, 53]
+
+[north.doors_off_street]
+measure = "doors_off_street"
+band    = [0, 0]
+
+[north.trees]
+measure = "trees"
+band    = [2386, 2386]
+
+[north.trees_added]
+measure = "trees_added"
+band    = [331, 331]
+
+[north.trees_removed]
+measure = "trees_removed"
+band    = [250, 250]
+
+[north.trees_kept]
+measure = "trees_kept"
+band    = [2055, 2055]
+
+[north.trees_on_plots]
+measure = "trees_on_plots"
+band    = [0, 0]
+
+[north.nodes]
+measure = "nodes"
+band    = [5164, 5164]
+
+[north.nodes_ran]
+measure = "nodes_ran"
+band    = [4978, 4978]
+
+[north.build_ms]
+measure = "build_ms"
+band    = [0, 300000]

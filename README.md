@@ -11,6 +11,13 @@ and rebuild; you do not repaint a map.
 It is for new games, small teams first, on Godot or Unreal, with an agent writing the documents and
 a person reviewing them. `via` is a working name.
 
+![One line changes. The whole town follows.](docs/reports/demo-hero.png)
+
+One line of a world's text changes (the high street's path, 40 m north): rebuilt, 53 houses re-plan
+along it from Kenney's kit, the woods give way and grow back, every door still opens on its street,
+nothing overlaps, and nothing was placed by hand. Every number in the picture is a measure with
+its protocol: `examples/demo` (the sweep, each step a real build: `docs/reports/demo-sweep.mp4`).
+
 ## Status
 
 The first cut is on `main` since 2026-11-18: milestones M0 to M7 of `docs/plan.md`. The engine

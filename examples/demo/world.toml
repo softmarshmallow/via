@@ -1,0 +1,150 @@
+name       = "demo"
+extent     = [0, 0, 480, 320]                 # metres: x east, y north
+resolution = 1
+seed       = 24
+include    = ["water", "town", "building", "vegetation", "review"]   # kinds as data; the core knows none of these words
+pack       = "packs/demo.toml"                # Kenney's kit and the starter pack's trees, each included whole
+
+# The canonical demo (docs/design/demo.md; D of docs/plan-fixes.md): a market town in a wooded
+# valley. Written here: the land, a stream, two streets, where woods stand, and the rows of houses
+# by the streets they follow. Not written anywhere: a house, a tree, a wall piece, a plot's level.
+# Every one is laid by a step or a scatter from the lines above, so a change to a line is a change
+# to everything that follows from it, and nothing else (changes/, the sweep).
+
+# ------------------------------------------------------------------------------------------ the land
+
+[field.height]                                # a valley: the stream low in the south, the town on the
+role = "surface"                              # gentle slope above it, wooded hills behind (to 20 m) and either side
+base = "= 18 + 0.02 * y + 0.0026 * pow(max(0, 64 - y), 2) + 0.004 * pow(max(0, y - 250), 2) + 0.006 * pow(max(0, abs(x - 240) - 210), 2) + 2.2 * fbm(160, 3, seed = 'hills') + 0.4 * fbm(30, 2, seed = 'grain')"
+
+[field.water]                                 # lib/water's convention: dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]                              # ways and water keep growth off (role:keep_out)
+role = "keep_out"
+base = "= 0"
+
+[field.cover]                                 # where a wood stands, 0 to 1: patches away from the town,
+tags = ["cover"]                              # none on the water or its banks
+base = "= smoothstep(-0.05, 0.25, fbm(150, 3, seed = 'woods') - 0.05 + 0.45 * smoothstep(40, 90, dist('kind:main_street', 90)) + 0.6 * smoothstep(195, 225, abs(x - 240))) * smoothstep(8, 16, dist('kind:beck', 20))"
+
+# ------------------------------------------------------------------------------------------ the stream
+
+[feature.stream]
+kind  = "beck"
+path  = [[0, 58], [120, 50], [250, 60], [380, 48], [480, 56]]
+width = 9
+depth = 1.6
+flow  = 0.8
+
+# ------------------------------------------------------------------------------------------ streets
+# The high street runs east along the slope; the church lane leaves it north. The high street's path
+# is the line the demo's sweep changes (changes/, docs/design/demo.md). lib/town's main street
+# keeps houses off to 5.75 m from its line, a street to 4.25 m. Both along the axes: lay tiles no
+# flat roof on a building turned off them (lay.py rule 9).
+
+[feature.high_street]
+kind = "main_street"
+path = [[45, 125], [435, 125]]
+
+[feature.lane_foot]                           # where the church lane leaves the high street
+on = { ref = "high_street", t = 0.4 }
+
+[feature.church_lane]
+kind      = "street"
+starts_at = "lane_foot"
+path      = [[201, 252]]
+
+# The frontages: each a line along one side of a street at the back of its verge (row.py rule 10).
+# The north side stops short of the lane each side: its verge and its first houses lie between.
+# The lane's rows start 4.6 m past the high street's houses, so no two plots (each 1.5 m round its
+# house) overlap.
+
+[feature.front_wn]                            # the high street, north side, west of the lane
+follows = { ref = "high_street", span = [0.02, 0.37], offset = 6 }
+
+[feature.front_mn]                            # the north side, east of the lane
+follows = { ref = "high_street", span = [0.43, 0.98], offset = 6 }
+
+[feature.front_s]                             # south side, all its length
+follows = { ref = "high_street", span = [0.02, 0.98], offset = -6 }
+
+[feature.front_lw]                            # the church lane, west side, past the high street's houses
+follows = { ref = "church_lane", span = [0.31, 0.97], offset = 4.5 }
+
+[feature.front_le]
+follows = { ref = "church_lane", span = [0.31, 0.97], offset = -4.5 }
+
+# ------------------------------------------------------------------------------------------ the ground
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.meadow]                    # open ground away from the woods
+paint = "meadow"
+mask  = "= 0.7 * (1 - f('cover')) * smoothstep(-0.2, 0.3, fbm(60, 2, seed = 'hay'))"
+
+[field.ground.then.gravel]                    # the stream's bed and banks
+paint = "gravel"
+mask  = "= 1 - smoothstep(4, 7, dist('kind:beck', 10))"
+
+[field.ground.then.flags]                     # the footways, to the house fronts
+paint = "flags"
+mask  = "= max(1 - smoothstep(5.5, 6.0, dist('kind:main_street', 8)), 1 - smoothstep(4.0, 4.5, dist('kind:street', 6)))"
+
+[field.ground.then.setts]                     # the carriageways
+paint = "setts"
+mask  = "= max(1 - smoothstep(3.0, 3.4, dist('kind:main_street', 6)), 1 - smoothstep(2.0, 2.4, dist('kind:street', 4)))"
+
+# ------------------------------------------------------------------------------------------ layers
+
+[layer.town]
+file  = "layers/town.toml"
+owner = "level design"
+rank  = 1
+
+[layer.walls]
+file  = "layers/walls.toml"
+owner = "walls"
+rank  = 2
+
+[layer.growth]
+file  = "layers/growth.toml"
+owner = "dressing"
+rank  = 3
+
+# ------------------------------------------------------------------------------------------ views
+# Each eye and what it looks at stands on a street (`on`) or is fixed on the hills, so a view of the
+# town follows the town.
+
+[feature.look_town]
+on = { ref = "high_street", t = 0.45 }
+
+[feature.hill]                                # the town from the hill across the stream, at golden hour
+kind       = "bookmark"
+at         = [130, 6]
+toward     = "look_town"
+eye_height = 30
+
+[feature.look_east]
+on = { ref = "high_street", t = 0.9 }
+
+[feature.street]                              # down the high street at eye level
+kind       = "bookmark"
+on         = { ref = "high_street", t = 0.06 }
+toward     = "look_east"
+eye_height = 1.7
+
+[feature.look_lane]
+on = { ref = "church_lane", t = 0.8 }
+
+[feature.lane]                                # up the church lane from its foot
+kind       = "bookmark"
+on         = { ref = "church_lane", t = 0.02 }
+toward     = "look_lane"
+eye_height = 1.7
