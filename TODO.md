@@ -1095,9 +1095,10 @@ open, and its place here is its destination.
       scoped by taxon.
       (From K11 of docs/plan-kits.md, 2026-11-23.) Done in F6 of docs/plan-fixes.md: a pack
       includes another, `[include.<prefix>]` (spec/assets.md 2.8); realm's script is gone.
-- [ ] **`build.pack_root_far` fires wrongly for a pack in a subfolder whose `root` climbs to the
+- [x] **`build.pack_root_far` fires wrongly for a pack in a subfolder whose `root` climbs to the
       world's folder** (`pack = "packs/top.toml"`, `root = ".."`): crates/via-cli/src/build.rs
-      pops the parent to "" (lines 795-815). Not from includes; found by F6's review, 2026-11-24.
+      pops the parent to "" (lines 795-815). Not from includes; found by F6's review, 2026-11-24. Mended in T1
+      (case `build/pack_root_climbs`).
 - [ ] **An include by a pack's name** (spec/assets.md 2.8): `pack = "starter"` in an include is
       `doc.not_yet`; only a path is taken, because `pack::read` has no roots to look a name up
       in (they are the build's and the command line's). Built when a world asks to include a
@@ -1512,6 +1513,28 @@ open, and its place here is its destination.
 
 ### `lib/building`
 
+- [ ] **No flat roof or floor on a building turned off the axes** (lay.py rule 9): tiles are
+      instances on the millimetre lattice, and two that abut off the axes overlap by the
+      rounding, which the core takes for two things in one place (rules.md 8.1). So
+      `examples/high_street` runs its streets along the axes; first built at an angle, no house
+      had a roof. Owed: lay a turned building in its own frame and let abutting pieces of one
+      step overlap by the rounding (a tolerance in rules.md 8.1, or one instance per slab), the
+      first a street at an angle needs. (From T1 of docs/plan-fixes.md, 2026-11-24.)
+- [ ] **A row's frontage starts at a share of its street** (`follows`' `span`): where it should
+      start past another row's houses, it holds only for the houses of the day. In
+      `examples/high_street` `module` the deeper houses reach the lane's first (2 `row_meets`).
+      Owed: a frontage that starts where another row's depth ends (a row's `after`, or a
+      `follows` span from a point). (From T1, 2026-11-24.)
+- [ ] **A stair asked of a kit with none**: `lay` asks a stair of every building of two storeys
+      (rule 3), and Kenney's blocks are closed, with no stair piece and no inside to climb, so
+      `examples/high_street`'s pack states one that lays nothing. Owed: a kit of closed blocks
+      says so (no inside: no stair, no floor), and lay asks none. (From T1, 2026-11-24.)
+- [x] **A terrace on a slope steps at the ends of its party walls**: each house's plot keeps off
+      its party side (T1), and at the wall's two ends the upper house's plot banks over the
+      lower one's front and back aprons for 1.5 m (`examples/high_street`: 10 `plot_lost`, 0.3
+      to 0.4 m along 3 m). Owed: a row's houses that share a wall share one apron line, or a
+      step in the footway said as a step. (From T1, 2026-11-24.) Done in T1's fix pass: a plot's own ground is its level after every
+      plot's bank (`kind.plot`'s `flat`), and check reads one post off a party wall's ends.
 - [ ] **What someone else's kit left** (K10, `examples/borrowed`, lib/building/README.md "Someone
       else's kit"). Kenney's corners with windows (nine corner blocks) have no place: a corner
       has no variants (rule 8). Eight window blocks stand 0.025 to 0.075 m proud of the block's

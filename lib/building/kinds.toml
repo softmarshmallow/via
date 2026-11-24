@@ -63,12 +63,15 @@ authority = "anchored"
 
 [kind.row.defaults]                      # a point, `at`: where the row starts
 to       = []                            # [x, y]: where its frontage ends; buildings on the left of the way there, fronts to its right
+along    = ""                            # or the name of a line: the frontage is that line, start to end (row.py rule 10)
+reverse  = false                         # with `along`: the line end to start, for the side right of a street
 kit      = ""                            # the kit every building of the row is laid from
 depth    = 4                             # bays deep
 lots     = []                            # [{ bays, storeys, door }]: the buildings in order along the path
+widths   = []                            # or bays a lot may be wide: lots fill the frontage (row.py rule 11)
 heights  = []                            # storeys a lot takes when it writes none: never its neighbour's
 storeys  = 1                             # a lot's storeys with no `heights`
-storey_h = 0                             # these ten are each building's (kind.building, above)
+storey_h = 0                             # these thirteen are each building's (kind.building, above)
 ground_h = 0
 top_h    = 0
 plinth   = -1
@@ -78,6 +81,9 @@ roof     = ""
 fill     = []
 setback  = []
 overhang = []
+ground   = ""                            # these three too: "level", a plot under each building (lay.py rule 19)
+max_cut  = 3
+grade    = 0.3
 
 [kind.court]                             # a walled yard and the halls in it, written about one axis (court.py)
 authority = "anchored"
@@ -148,7 +154,7 @@ base = "= level"
 # after every shaped entry of order 0 whatever its layer (authority.md 4.2: nesting first, then
 # `order`, then layer rank), so a way's bed, a street's, a pad or a trail, in a layer above or
 # below, gives way to it, and the ground under the building is the level its floors were reckoned
-# from. A doorway's sill (shaped, `order = 2`) holds on it. What still overrides it: an anchored
+# from. A doorway's sill (shaped, `order = 3`) holds on it. What still overrides it: an anchored
 # kind (a ford, an `enclosure`, a `firm_pad`), a kind nested after it (one standing `on` it, or
 # lying wholly inside it), an entry of a higher `order`, and a second plot over the same ground
 # (the later by layer rank, then name). `check` says where the ground under a building on a plot
@@ -167,7 +173,19 @@ field      = "role:surface"
 value      = "= clamp(v, level - grade * d, level + grade * d)"
 mask       = "= 1 - smoothstep(10, 25, d)"
 max_change = "= max_cut"
-order      = 1                              # after a way's bed (0), before a doorway's sill (2)
+order      = 1                              # after a way's bed (0), before its own flat (2) and a doorway's sill (3)
+
+# Its outline again, level, after every plot's bank (T1 of docs/plan-fixes.md): two plots side by
+# side (a row's houses, each level, stepping with the land) each banked over the other's apron where
+# they meet, and the later by name won, so the earlier house's wall stood on its neighbour's bank
+# (`plot_lost` at both ends of every party wall). Now each plot's own ground is its level, and the
+# step between two lies on the line they share.
+[kind.plot.effect.flat]
+field      = "role:surface"
+value      = "= level"
+mask       = "= if(d > 0, 0, 1)"
+max_change = "= max_cut"
+order      = 2
 
 [kind.yard]                              # the outline of a building of no storeys (lay.py rule 18): its walls
 authority = "anchored"                   # stand round it on the terrain. It owns no surface and writes no field.
@@ -188,7 +206,7 @@ field  = "role:surface"                  # flat to `flat` metres off the path, s
 value  = "= sill_z"                      # its end reads `sill_z` (lay sets `flat` to at least the
 mask   = "= 1 - smoothstep(flat, flat + 1.5, d)"   # posts' diagonal)
 radius = 5
-order  = 2                               # after every other shaped entry on the ground, whatever its layer: a
+order  = 3                               # after every other shaped entry on the ground, whatever its layer: a
                                          # road's bed, a street's, a pad, a plot. Derived, as it was until K11,
                                          # the sill gave way to all of them, and a door beside a way was
                                          # `surface.gap` (examples/realm, "Before"). Not anchored: two doors

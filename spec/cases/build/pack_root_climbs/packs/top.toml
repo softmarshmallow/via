@@ -1,0 +1,5 @@
+# A pack in a subfolder whose root climbs to the world's folder, where the models are.
+root = ".."
+
+[asset.door]
+file = "models/door.gltf"

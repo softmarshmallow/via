@@ -737,7 +737,8 @@ as it stood, and a third by trying what there was.
 **A door beside a way.** `kind.doorway` named no authority, so its sill was derived and gave way
 to every shaped entry on the ground. A street's bed 4 m from a row's doors, and a trail's 5 m
 from a temple's, each set the posts the sill had set: 13 `surface.gap` errors in one build, 270
-to 631 mm, and 17 storeys no walk reached. The sill is now **shaped, with `order = 2`**: among
+to 631 mm, and 17 storeys no walk reached. The sill is now **shaped, with `order = 2`** (3 since
+T1 of `docs/plan-fixes.md`, after a plot's own ground, below): among
 the shaped entries it is applied after every one of a lower `order`, whatever its layer
 (authority.md 4.2: nesting first, then `order`, then layer rank), so a way's bed, a pad, a
 terrace and a plot (`order = 1`) all give way to it at the door. What still comes after it: a
@@ -769,7 +770,11 @@ its floors from that number: `lay` from the mean it read under the building (rul
 from the mean under the yard, read at the same posts `lay` reads. For a court the plot stands a
 layer below `lay`, which then reads level ground under the wall and every hall; for a building
 written by hand `lay` returns the plot itself and judges the wall's foot against the level, not
-against the land as it read it. A `row` takes none: its houses step with the land (rule 13).
+against the land as it read it. A `row` took none until T1 of `docs/plan-fixes.md`: two
+houses side by side each levelled 1.5 m past their party wall, and the later by name won the
+other's ground. Now a plot keeps off a side whose `faces` word is `party`, and `check` reads no
+ground along a party wall (a neighbour stands against it), so a row may pass `ground = "level"`
+to its houses and a terrace steps with its land at its party walls.
 The building or the court takes the plot's `max_cut` and `grade` and passes them on, so the
 core's `authority.max_change`, naming the plot, is answered where the author wrote `ground`.
 
@@ -778,7 +783,9 @@ core's `authority.max_change`, naming the plot, is answered where the author wro
 apron 117 mm, a road beside a temple in a layer above `walls` cut 0.99 m under its colonnade,
 and two temples 2 m apart had one plot's bank over the other's wall, 0.39 to 0.54 m over its
 floor; none of it was said, since `lay` judged the foot against the level it stated and cannot
-see what is shaped after it. Now the plot is **`order = 1`**: after every shaped way, pad and
+see what is shaped after it. Now the plot is **`order = 1`** (its bank; since T1 its own ground
+again at `order = 2`, after every plot's bank, so two plots side by side each hold their own
+ground and step on the line they share): after every shaped way, pad and
 trail, before the sill. The road probes then hold to the millimetre. What can still override
 it: an anchored kind (a `firm_pad`, an `enclosure`, a ford), a kind nested after it, an entry
 of a higher `order`, and a second plot over the same ground. For those `check` reads the ground

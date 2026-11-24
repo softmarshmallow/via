@@ -126,7 +126,12 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
    this step reads the ground as it ended, which `lay` could not: a plot is shaped with
    `order = 1`, and an anchored kind, a second plot over the same ground (two buildings laid in
    one layer do not see each other's), or an entry ordered after it still overrides it. The
-   ground is read along the outline every 0.5 m (lay.py rule 13's points). Where it stands over
+   ground is read along the outline every 0.5 m (lay.py rule 13's points), but along a side another
+   building's side lies along for a metre or more (read from the outlines, not from `faces`,
+   which any author may write): a neighbour's wall stands against it, so no ground shows there, and a
+   terrace stepping with its land steps at its party walls (T1 of docs/plan-fixes.md). Nor within
+   one post of a party wall's end: two neighbours' plots meet on their wall's line, and the
+   ground, a field of posts, steps from one level to the other over one post. Where it stands over
    the ground storey's floor, or falls further below it than both the plinth the plot promised
    and the depth of the kit's base (its `role:wall` piece tagged `storey:base`; none, 0), each by
    more than 0.05 m, the building is `plot_lost` (warning), once, with the worst figure, the
@@ -138,7 +143,7 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
    `lay` judged them against the ground it read, which nothing levels afterwards but what a
    world writes in a layer above (rule 13). Source: ours; asked by K11's review (examples/realm).
 13. **Ground over a floor, off a plot.** A building of one storey or more that stands on no plot
-   (rule 12 judges those) is read the same way along its outline, against its ground storey's
+   (rule 12 judges those) is read the same way along its outline (but its party walls), against its ground storey's
    floor. Where the ground stands over the floor by more than 0.05 m the land shows through it:
    `ground_over` (warning), once, with the worst figure and the length of wall it holds along.
    `lay` reckons a floor from the mean of the ground under the outline (lay.py rule 2), so a
@@ -1212,15 +1217,56 @@ def key_of(name):
     return "".join(c if c.isalnum() or c in "_-" else "_" for c in str(name))
 
 
-def foot_points(ring):
-    """Points along a ring every `FOOT_STEP`, from half a step in on each side (lay.py rule 13)."""
+PARTY = 1000         # mm of side another building's side must lie along for it to stand against it
+ALONG = 5            # mm off a side's line a neighbour's side may lie and still lie along it
+
+
+def party_sides(ring, others):
+    """For each side of `ring`, whether other buildings' sides lie along it, `PARTY` mm or more
+    (rules 12, 13): a neighbour's wall stands against it. Read from the outlines, never from a
+    building's `faces`, which any author may write (T1's review: a word took no ground's reading)."""
+    out = []
+    n = len(ring)
+    for k in range(n):
+        (x0, y0), (x1, y1) = ring[k], ring[(k + 1) % n]
+        L = math.hypot(x1 - x0, y1 - y0)
+        if L < 1:
+            out.append(False)
+            continue
+        ex, ey = (x1 - x0) / L, (y1 - y0) / L
+        shared = 0.0
+        for o in others:
+            m = len(o)
+            for j in range(m):
+                p, q = o[j], o[(j + 1) % m]
+                if max(abs((p[0] - x0) * ey - (p[1] - y0) * ex), abs((q[0] - x0) * ey - (q[1] - y0) * ex)) > ALONG:
+                    continue
+                a = (p[0] - x0) * ex + (p[1] - y0) * ey
+                b = (q[0] - x0) * ex + (q[1] - y0) * ey
+                shared += max(0.0, min(max(a, b), L) - max(min(a, b), 0.0))
+        out.append(shared >= PARTY)
+    return out
+
+
+def foot_points(ring, faces=None, post=0):
+    """Points along a ring every `FOOT_STEP`, from half a step in on each side (lay.py rule 13),
+    but on a side `faces` calls `party` (rules 12, 13: a neighbour's wall stands against it), and
+    within `post` mm of a party wall's end: two neighbours' plots meet on the line their wall
+    stands on, and the ground, a field of posts `post` apart, steps from one level to the other
+    over one post (T1 of docs/plan-fixes.md)."""
+    party = [isinstance(faces, list) and i < len(faces) and faces[i] == "party" for i in range(len(ring))]
     pts, n = [], len(ring)
     for i in range(n):
+        if party[i]:
+            continue
         (x0, y0), (x1, y1) = ring[i], ring[(i + 1) % n]
         L = math.hypot(x1 - x0, y1 - y0)
         k = max(1, int(round(L / FOOT_STEP)))
-        pts += [(int(round(x0 + (x1 - x0) * (j + 0.5) / k)), int(round(y0 + (y1 - y0) * (j + 0.5) / k)))
-                for j in range(k)]
+        for j in range(k):
+            s = L * (j + 0.5) / k
+            if (party[i - 1] and s < post) or (party[(i + 1) % n] and L - s < post):
+                continue
+            pts.append((int(round(x0 + (x1 - x0) * (j + 0.5) / k)), int(round(y0 + (y1 - y0) * (j + 0.5) / k))))
     return pts
 
 
@@ -1404,7 +1450,12 @@ def read_along(step, buildings, selector):
         # review: two `water_level` fields silenced rule 14). Said by the caller.
         raise Several([f.name for f in found])
     (field,) = found
-    pts = {b["name"]: foot_points(b["ring"]) for b in buildings}
+    post = int((step.grid or {}).get("resolution_mm") or 0) if hasattr(step, "grid") else 0
+    rings = [b["ring"] for b in buildings]
+
+    def faces(b):
+        return ["party" if p else "open" for p in party_sides(b["ring"], [r for r in rings if r is not b["ring"]])]
+    pts = {b["name"]: foot_points(b["ring"], faces(b), post) for b in buildings}
     allp = [p for b in buildings for p in pts[b["name"]]]
     if not allp:
         return {}

@@ -60,7 +60,8 @@ Rules (ours):
    the `at` or `to` that clears them, and is not returned: two rows that both run to a block's
    corner would stand in each other there.
 8. **What is passed on.** `storey_h`, `ground_h`, `top_h`, `plinth`, `porch`, `walk_out`, `roof`,
-   `fill`, `setback` and `overhang` of the row are each building's (a `setback` or `overhang`
+   `fill`, `setback`, `overhang`, and `ground`, `max_cut` and `grade` (a level plot under each
+   building, lay.py rule 19; from T1) of the row are each building's (a `setback` or `overhang`
    entry for a storey a lot has not is not passed to it). Of a `fill` entry's `storeys` a building keeps
    those it has, and an entry none of whose storeys it has is not passed to it: a row's lots
    differ in height, and one line may fill the fifth storey of those that have one. A building is named `<row>_<i>`, `i` its lot's
@@ -71,9 +72,29 @@ Rules (ours):
    rings, and each returned ring is rounded to the millimetre. What `lay` then does with a
    turned building is `lay`'s (lay.py rules 6 and 9: no floor tile, and its walls meet by
    rounding).
+10. **A row along a line** (the fix plan's T1). `along = "<name>"` in place of `to`: the frontage
+   is the named line feature, from its first point to its last (from its last to its first with
+   `reverse = true`, for the street's other side: a `follows` line runs the way its street does),
+   and the row's own point is not read. The line is typically one with no kind that `follows` a street at a setback
+   (geometry.md 4), so the core moves it when the street moves, and the row with it. The line
+   must be straight: a point of it more than 10 mm off the line from its first to its last is
+   `row_bent` (warning), and the row is not laid: a street bent under its rows is not the rows'
+   fault. `along` with `to`, a name that is no feature, or a feature of one point, is `params`.
+11. **A row that fills its frontage** (T1). `widths = [3, 4, 5]` (bays, whole numbers) in place
+   of `lots`: lots are laid from the start, each as wide as a hash of the row's name and the
+   lot's number picks from the list (as rule 5 picks heights; never its neighbour's width where
+   the list holds two), or, where that one runs past the end, the widest of the list that does
+   not and differs from its neighbour's (else the widest that fits), until none fits. The door is rule 1's default. What is left at the end, less than the
+   narrowest lot, is not `row_open`: the author asked for the frontage filled, not closed, and a
+   frontage is seldom whole bays. A line shorter than the narrowest lot is `row_short`
+   (warning), and the row is not laid. What is left is in the `rows` info's data (`left_rows`, the rows by name,
+   and `left`, metres, in that order). So a
+   longer frontage gets more lots, and the lots before keep their names and widths.
 
-Codes are `step.<id>.<code>`: `params` (error: a row's attribute, or a kit with no bay),
-`row_open`, `row_stair`, `row_meets` (warnings), `rows` (info, what was returned).
+Codes are `step.<id>.<code>`: `params` (error: a row's attribute, or a kit with no bay; said at
+that row, and the other rows are laid), `row_open`, `row_stair`, `row_meets`, `row_bent` and
+`row_short` (warnings: a row's line that bends or holds no lot is not laid, the others are; it is
+not the row's text but a street moved under it), `rows` (info, what was returned).
 
 Library code imports only viasdk and the standard library (R19b).
 """
@@ -84,9 +105,11 @@ import math
 import viasdk
 
 FIT = 5              # mm a row may differ from its frontage and still close
+STRAIGHT = 10        # mm a point of an `along` line may stand off its chord (rule 10)
 SHARE = 1000         # mm of side two buildings share for it to be a party wall
-PASSED = ("storey_h", "ground_h", "top_h", "plinth", "porch", "walk_out", "roof", "fill", "setback", "overhang")
-ATTRS = ["to", "kit", "depth", "lots", "heights", "storeys", *PASSED]
+PASSED = ("storey_h", "ground_h", "top_h", "plinth", "porch", "walk_out", "roof", "fill", "setback", "overhang",
+          "ground", "max_cut", "grade")
+ATTRS = ["to", "along", "reverse", "kit", "depth", "lots", "widths", "heights", "storeys", *PASSED]
 
 EXPLAIN = {
     "params": "A row's attribute, or its kit, cannot be laid from. The message names it.",
@@ -97,6 +120,10 @@ EXPLAIN = {
     "this lot's sides is long enough for the stairwell. Give the lot more bays, the row more depth, or one storey.",
     "row_meets": "A lot of this row stands where a lot of another row does. Two rows that meet at a corner cannot "
     "both run to it: start or end one of them clear of the other's depth.",
+    "row_bent": "A row runs along a line (rule 10), and that line is no longer straight: a street it follows "
+    "was bent. The row is not laid; the others are. Lay one row along each straight part.",
+    "row_short": "A row fills its line from `widths` (rule 11), and its line is now shorter than the narrowest "
+    "lot. The row is not laid; the others are.",
     "rows": "What the step returned: the rows read and the buildings written.",
 }
 
@@ -105,6 +132,14 @@ class ParamError(Exception):
     def __init__(self, key, message, hint):
         super().__init__(message)
         self.key, self.message, self.hint, self.row = key, message, hint, None
+
+
+class Unlaid(Exception):
+    """A row its frontage cannot hold as it now lies (rules 10, 11): a warning, the row not laid,
+    the others laid. Not the row's text: a street moved under it."""
+    def __init__(self, code, message, hint, data, at):
+        super().__init__(message)
+        self.code, self.message, self.hint, self.data, self.at = code, message, hint, data, at
 
 
 def kit_facts(rows, taxon):
@@ -154,9 +189,42 @@ def _whole(v, lo=1):
     return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v == int(v) and v >= lo
 
 
+def pick(name, i, choices, before):
+    """Rule 5's choice: the entry of `choices` a hash of the row's name and the lot's number picks,
+    or the next one that differs from `before`, where one does."""
+    k = int.from_bytes(hashlib.sha256(f"{name}/{i}".encode()).digest()[:8], "big") % len(choices)
+    n = int(choices[k])
+    if n == before:
+        n = next((int(choices[(k + d) % len(choices)]) for d in range(1, len(choices))
+                  if choices[(k + d) % len(choices)] != before), n)
+    return n
+
+
+def widths_of(name, attrs, length, m, r):
+    """Rule 11: the lots that fill a frontage `length` mm long, [{bays, storeys, door}], and what is
+    left at its end, mm."""
+    widths = attrs.get("widths")
+    if not isinstance(widths, list) or not widths or not all(_whole(w) for w in widths):
+        raise ParamError("widths", f"`widths` of `{name}` is not a list of whole numbers from 1",
+                         "write the bays a lot may be wide: `widths = [3, 4, 5]`")
+    out, at = [], 0
+    while True:
+        w = pick(name, len(out), widths, out[-1]["bays"] if out else None)
+        if at + w * m + 2 * r > length + FIT:
+            fit = [int(v) for v in widths if at + int(v) * m + 2 * r <= length + FIT]
+            w = max((v for v in fit if not out or v != out[-1]["bays"]), default=max(fit, default=None))
+        if w is None:
+            break
+        out.append({"bays": w, "storeys": None, "door": 1 if w > 1 else 0})
+        at += w * m + 2 * r
+    return out, length - at
+
+
 def lots_of(name, attrs):
     """The row's lots, checked (rule 1): [{bays, storeys or None, door}]."""
     lots = attrs.get("lots")
+    if not lots and attrs.get("widths"):
+        lots = [{"bays": 1}]                        # rule 11 lays them; this checks the rest
     if not isinstance(lots, list) or not lots:
         raise ParamError("lots", f"`{name}` has no `lots`",
                          "write `lots = [{ bays = 4 }, { bays = 3, storeys = 2 }]`: the buildings along the path")
@@ -188,11 +256,7 @@ def heights_of(name, lots, heights, default):
     for i, lot in enumerate(lots):
         n = lot["storeys"]
         if n is None and heights:
-            k = int.from_bytes(hashlib.sha256(f"{name}/{i}".encode()).digest()[:8], "big") % len(heights)
-            n = int(heights[k])
-            if out and n == out[-1]:
-                n = next((int(heights[(k + d) % len(heights)]) for d in range(1, len(heights))
-                          if heights[(k + d) % len(heights)] != out[-1]), n)
+            n = pick(name, i, heights, out[-1] if out else None)
         out.append(int(n if n is not None else default))
     return out
 
@@ -267,20 +331,35 @@ def shared_side(a, k, b):
 
 def plan_row(name, path, attrs, facts):
     """One row's buildings and notes (rules 1 to 3, 5, 6), before rows are held against each
-    other: ([{key, ring (mm), attrs, lot}], [note])."""
+    other: ([{key, ring (mm), attrs, lot}], [note]). `attrs["along"]`, where written, has been
+    read as `attrs["_line"]`: the line's points (mm), or None where no feature has the name."""
     to = attrs.get("to")
-    if len(path) != 1:
-        raise ParamError("at", f"`{name}` is not a point", "write where the row starts as `at = [x, y]`")
-    if not (isinstance(to, list) and len(to) == 2 and all(
-            isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in to)):
-        raise ParamError("to", f"`to` of `{name}` is {to!r}", "write where the row's frontage ends: `to = [x, y]`, metres")
-    (x0, y0), (x1, y1) = path[0], (int(round(to[0] * 1000)), int(round(to[1] * 1000)))
+    if attrs.get("along") not in (None, ""):
+        (x0, y0), (x1, y1) = frontage(name, attrs)
+    else:
+        if len(path) != 1:
+            raise ParamError("at", f"`{name}` is not a point", "write where the row starts as `at = [x, y]`")
+        if not (isinstance(to, list) and len(to) == 2 and all(
+                isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in to)):
+            raise ParamError("to", f"`to` of `{name}` is {to!r}",
+                             "write where the row's frontage ends: `to = [x, y]`, metres, or `along` a line")
+        (x0, y0), (x1, y1) = path[0], (int(round(to[0] * 1000)), int(round(to[1] * 1000)))
     path = [(x0, y0), (x1, y1)]
     L = math.hypot(x1 - x0, y1 - y0)
     if L < 1:
         raise ParamError("to", f"`{name}` has no length", "write a `to` that is not the row's own point")
     e, n = ((x1 - x0) / L, (y1 - y0) / L), (-(y1 - y0) / L, (x1 - x0) / L)
+    if attrs.get("widths") not in (None, []) and attrs.get("lots") not in (None, []):
+        raise ParamError("widths", f"`{name}` writes both `lots` and `widths`",
+                         "write `lots` to say each building, or `widths` to fill the frontage (rule 11)")
     lots = lots_of(name, attrs)
+    left = None
+    if attrs.get("widths") not in (None, []):
+        lots, left = widths_of(name, attrs, L, facts["module"], facts["reach"])
+        if not lots:
+            raise Unlaid("row_short", f"no lot of `{name}`'s `widths` fits its frontage, {L / 1000:g} m: "
+                         "the row is not laid", "write narrower widths, or a longer frontage",
+                         {"frontage": round(L / 1000, 3)}, (x0, y0))
     default = attrs.get("storeys", 1)
     if not _whole(default):
         raise ParamError("storeys", f"`storeys` of `{name}` is {default!r}", "write a whole number from 1")
@@ -321,9 +400,39 @@ def plan_row(name, path, attrs, facts):
         else:
             out.append(b)
         at += wide
-    if abs(at - L) > FIT:
+    if left is not None:
+        notes.append({"code": "row_left", "row": name, "left": left})
+    elif abs(at - L) > FIT:
         notes.append({"code": "row_open", "row": name, "lots": at, "path": L, "module": m, "at": path[1]})
     return out, notes
+
+
+def frontage(name, attrs):
+    """Rule 10: the first and last point of the line `along` names, held straight (mm)."""
+    if attrs.get("to") not in (None, []):
+        raise ParamError("along", f"`{name}` writes both `to` and `along`",
+                         "write `to` for a frontage of two points, or `along` for a line's")
+    line, pts = attrs.get("along"), attrs.get("_line")
+    if not isinstance(line, str):
+        raise ParamError("along", f"`along` of `{name}` is {line!r}", "write the name of a line feature")
+    if pts is None:
+        raise ParamError("along", f"`{name}` runs along `{line}`, and no feature is named so",
+                         "write the name of a line: one that `follows` the street, for one")
+    if len(pts) < 2:
+        raise ParamError("along", f"`{line}`, which `{name}` runs along, is a point",
+                         "name a line of two points or more")
+    (x0, y0), (x1, y1) = pts[0], pts[-1]
+    L = math.hypot(x1 - x0, y1 - y0)
+    if L >= 1:
+        off = max(abs((x1 - x0) * (y - y0) - (y1 - y0) * (x - x0)) / L for x, y in pts)
+        if off > STRAIGHT:
+            raise Unlaid("row_bent", f"`{line}`, which `{name}` runs along, bends: a point of it stands "
+                         f"{off / 1000:g} m off the line from its start to its end; the row is not laid",
+                         "lay one row along each straight part: a `follows` line's `span` can be one part",
+                         {"line": line, "off": round(off / 1000, 3)}, pts[0])
+    if attrs.get("reverse") not in (None, True, False):
+        raise ParamError("reverse", f"`reverse` of `{name}` is {attrs.get('reverse')!r}", "write `reverse = true`, or leave it out")
+    return (pts[-1], pts[0]) if attrs.get("reverse") else (pts[0], pts[-1])
 
 
 def plan(rows, kits):
@@ -337,8 +446,14 @@ def plan(rows, kits):
                                  "write the taxon of the kit its buildings are laid from")
             got, said = plan_row(name, path, attrs, kits(attrs["kit"]))
         except ParamError as e:
-            e.row = e.row or name                # the row whose line the fault is said at
-            raise
+            # One row's fault is said at that row, and the other rows are laid (T1's review: one
+            # row's fault had stopped them all).
+            notes.append({"code": "params", "row": name, "key": e.key, "message": e.message, "hint": e.hint})
+            continue
+        except Unlaid as u:
+            notes.append({"code": u.code, "row": name, "message": u.message, "hint": u.hint, "data": u.data,
+                          "at": u.at})
+            continue
         notes += said
         for b in got:
             hits = [o["key"] for o in buildings if o["row"] != name and overlap(b["exact"], o["exact"])]
@@ -379,6 +494,23 @@ def read_rows(step):
         pts = [(int(v[0]), int(v[1])) for v in _list(fl.rings(f)[0][0])]
         attrs = viasdk.attrs(fl, f, ATTRS)
         out.append((name, pts, attrs))
+    # Rule 10: the lines rows run along, read by name (a name read is in the step's trace, so a
+    # moved line re-runs it).
+    names = sorted({a["along"] for _, _, a in out if isinstance(a.get("along"), str) and a["along"]})
+    lines = {}
+    for name in names:
+        # One read a name: a name that is no feature is that row's fault alone (T1's review: read
+        # together, one missing name lost every row its line).
+        try:
+            ll = step.features(select=[name])
+        except Exception:
+            continue
+        for f, n in enumerate(_list(ll.get("name", []))):
+            if n == name:
+                lines[n] = [(int(v[0]), int(v[1])) for v in _list(ll.points(f))]
+    for _, _, a in out:
+        if isinstance(a.get("along"), str) and a["along"]:
+            a["_line"] = lines.get(a["along"])
     return out
 
 
@@ -413,6 +545,8 @@ def generate(step):
         if x0_ <= at[0] <= x1_ and y0_ <= at[1] <= y1_:
             kw["position"] = (at[0] / 1000, at[1] / 1000)
         return kw
+    left = {n["row"]: n["left"] / 1000 for n in notes if n["code"] == "row_left"}
+    notes = [n for n in notes if n["code"] != "row_left"]
     for n in notes:
         first = n["code"] not in said
         said.add(n["code"])
@@ -432,6 +566,12 @@ def generate(step):
                          **placed({"data": {"lots": n["lots"] / 1000, "path": n["path"] / 1000,
                                             "bays": round(bays, 3)}}, n["at"]),
                          **({"explain": EXPLAIN["row_open"]} if first else {}))
+        elif n["code"] == "params":
+            step.error("params", n["row"], n["message"], n["hint"], explain=EXPLAIN["params"],
+                       data={"attribute": n["key"]})
+        elif n["code"] in ("row_bent", "row_short"):
+            step.warning(n["code"], n["row"], n["message"], n["hint"], **placed({"data": n["data"]}, n["at"]),
+                         **({"explain": EXPLAIN[n["code"]]} if first else {}))
         elif n["code"] == "row_stair":
             step.warning("row_stair", n["row"],
                          f"lot {n['lot']} of `{n['row']}`, {n['bays']} bays wide and {n['storeys']} storeys high, has no "
@@ -451,4 +591,6 @@ def generate(step):
                                             "to": n["to"] / 1000}}, n["at"]),
                          **({"explain": EXPLAIN["row_meets"]} if first else {}))
     step.info("rows", "step." + step.id, f"{len(rows)} rows, {len(buildings)} buildings", "none needed",
-              data={"rows": len(rows), "buildings": len(buildings)}, explain=EXPLAIN["rows"])
+              data={"rows": len(rows), "buildings": len(buildings),
+                    **({"left_rows": sorted(left), "left": [left[k] for k in sorted(left)]} if left else {})},
+              explain=EXPLAIN["rows"])

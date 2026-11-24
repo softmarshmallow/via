@@ -806,6 +806,11 @@ pub fn run(a: &Args) -> Outcome {
             for part in &pk.root.written {
                 if part == ".." && dir.file_name().is_some() {
                     dir.pop();
+                    // Climbed to the working directory: that is `.`, not "no path" (F6's review:
+                    // `pack = "packs/top.toml"` with `root = ".."` was `build.pack_root_far`).
+                    if dir.as_os_str().is_empty() {
+                        dir = PathBuf::from(".");
+                    }
                 } else if part != "." {
                     dir.push(part);
                 }

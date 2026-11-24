@@ -1,0 +1,123 @@
+name       = "high_street"
+extent     = [0, 0, 320, 224]                 # metres: x east, y north
+resolution = 1
+seed       = 12
+include    = ["town", "building", "review"]   # kinds as data; the core knows none of these words
+pack       = "packs/kenney.toml"              # Kenney's kit at a person's size (packs/kenney.toml)
+
+# A market street of someone else's kit at a person's size (the fix plan's T1, challenge 33):
+# Kenney's Modular Buildings, read four times its made size, laid by lib/building's `row` (R79).
+# The street comes first, drawn by hand. Each side of each straight part of it is a line that
+# `follows` the street at the footway's back (geometry.md 4), and a row of houses runs along that
+# line (row.py rule 10) and fills it with houses of three widths (rule 11). So the street is the
+# one thing written where it is: move it, and the lines, the rows and every house follow.
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                                # a slope rising north, 1 in 33, along the lane
+role = "surface"                              # and across the high street: a row's houses stand
+base = "= 20 + 0.03 * y + 0.4 * fbm(160, 2, seed = 'swell')"   # level with their neighbours
+
+[field.clearing]                              # the streets keep the houses off them (role:keep_out)
+role = "keep_out"
+base = "= 0"
+
+# ------------------------------------------------------------------------------------------ streets
+# The high street runs east along the slope; the church lane leaves it north halfway. lib/town's
+# main street is a 6.5 m carriageway and 2 m footways, and keeps houses off to 5.75 m from its
+# line (its `verge` fades over half a metre past the footway); the lane is a 4.5 m carriageway and
+# 1.5 m footways, clear to 4.25 m. Both run along the axes: lay tiles no flat roof on a building
+# turned off them (lay.py rule 9; T1 in docs/plan-fixes.md).
+
+[feature.high_street]
+kind = "main_street"
+path = [[0, 100], [320, 100]]
+
+[feature.lane_foot]                           # where the church lane leaves the high street
+on = { ref = "high_street", t = 0.5 }
+
+[feature.church_lane]
+kind      = "street"
+starts_at = "lane_foot"
+path      = [[160, 224]]
+
+# The frontages: each a line along one side of a street at the back of its verge. A line runs the
+# way its street does: left of the street's travel the row runs along it (its houses on its left,
+# away from the street); right of it, the row runs it backwards (`reverse`, layers/houses.toml).
+# The north side of the high street stops 6 m short of the lane's line each side; the lane's rows
+# start past the high street's houses (5.75 m and 20 m deep).
+
+[feature.front_wn]                            # the high street, north side, west of the lane
+follows = { ref = "high_street", span = [0.01, 0.48], offset = 6 }
+
+[feature.front_en]                            # the high street, north side, east of the lane
+follows = { ref = "high_street", span = [0.52, 0.99], offset = 6 }
+
+[feature.front_s]                             # the high street, south side, all its length
+follows = { ref = "high_street", span = [0.01, 0.99], offset = -6 }
+
+[feature.front_lw]                            # the church lane, west side
+follows = { ref = "church_lane", span = [0.23, 0.97], offset = 4.5 }
+
+[feature.front_le]                            # the church lane, east side
+follows = { ref = "church_lane", span = [0.23, 0.97], offset = -4.5 }
+
+# ------------------------------------------------------------------------------------------ the ground
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.flags]                     # the footways, to the house fronts
+paint = "flags"
+mask  = "= max(1 - smoothstep(5.0, 5.5, dist('kind:main_street', 8)), 1 - smoothstep(3.75, 4.25, dist('kind:street', 6)))"
+
+[field.ground.then.setts]                     # the carriageways
+paint = "setts"
+mask  = "= max(1 - smoothstep(3.0, 3.5, dist('kind:main_street', 6)), 1 - smoothstep(2.0, 2.5, dist('kind:street', 4)))"
+
+# ------------------------------------------------------------------------------------------ layers
+
+[layer.houses]
+file  = "layers/houses.toml"
+owner = "level design"
+rank  = 1
+
+[layer.walls]
+file  = "layers/walls.toml"
+owner = "walls"
+rank  = 2
+
+# ------------------------------------------------------------------------------------------ views
+# Each eye and each thing it looks at stands on a street (`on`), so the views follow the street
+# when it moves: written as numbers, the moved street's eyes stood inside its houses.
+
+[feature.look_cross]                          # up the lane from its foot, where the streets meet
+on = { ref = "church_lane", t = 0.1 }
+
+[feature.over]                                # the whole street from the south-west, high
+kind       = "bookmark"
+at         = [70, 20]
+toward     = "look_cross"
+eye_height = 60
+
+[feature.look_east]
+on = { ref = "high_street", t = 0.8 }
+
+[feature.along]                               # down the high street from its west end, eye level
+kind       = "bookmark"
+on         = { ref = "high_street", t = 0.12 }
+toward     = "look_east"
+eye_height = 1.7
+
+[feature.look_lane]
+on = { ref = "church_lane", t = 0.7 }
+
+[feature.up_lane]                             # up the church lane from the high street
+kind       = "bookmark"
+on         = { ref = "church_lane", t = 0.02 }
+toward     = "look_lane"
+eye_height = 1.7

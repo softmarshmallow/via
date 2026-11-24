@@ -1,0 +1,379 @@
+# What a high_street build measures (docs/plan-fixes.md, T1: a market street of Kenney's kit at a
+# person's size, challenge 33). Measures, never bytes (R15): each row names a measure of
+# measure.py and the band it must fall in. Taken by
+#
+#   python3 examples/high_street/measure.py BUILD --world examples/high_street/world.toml --run BUILD.run.json   # base
+#   python3 examples/high_street/measure.py BUILD+<c> --base BUILD --run BUILD+<c>.run.json                      # a change, built with --against
+#   python3.11 examples/high_street/measure.py ... --check <section>
+#
+# Protocol of the numbers below: macOS arm64, release `via` built from the tree at e1fc651 (F6)
+# with T1's one engine mend (`build.pack_root_far` for a pack whose root climbs), VIA_LIB=lib of the
+# working tree with T1's library changes and its review's fix pass (row.py rules 10 and 11, a row's
+# fault said at that row; a plot kept off a party wall, its own ground level over every plot's
+# bank; check reading a party wall from the outlines), Python 3.12 (sdk/python/.venv) for the steps,
+# Kenney's models as examples/borrowed/fetch.py fetches them (SHA-256 of the zip in its README).
+# One fresh store: the base, then each change with --against the base, one build each. Measured
+# 2026-11-25 in one run and checked in a second. A band is the measured number: not a target, it
+# says where someone looks. A time's band is wide: it is the machine's, and the row says only that
+# the build finished in that time.
+
+
+# ------------------------------------------------------------------------------------------ base
+# The street as written: 19 feature tables and 78 numbers (the streets, five frontage lines,
+# five rows on their lines, three views on the streets). The rows return 49 houses of one to three
+# storeys, 12 to 20 m across their fronts, every door on its street, no two houses in one place;
+# 2320 pieces. No warning: each house stands on its own level plot, the lane's terrace steps at
+# its party walls, and every post inside every house is its plot's level (read from the height
+# field, once, by T1's fix pass: within 0.000001 m).
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[base.plot_lost]
+measure = "plot_lost"
+band    = [0, 0]
+
+[base.rows]
+measure = "rows"
+band    = [5, 5]
+
+[base.buildings]
+measure = "buildings"
+band    = [49, 49]
+
+[base.lots_row_wn]
+measure = "lots_row_wn"
+band    = [8, 8]
+
+[base.lots_row_en]
+measure = "lots_row_en"
+band    = [9, 9]
+
+[base.lots_row_s]
+measure = "lots_row_s"
+band    = [20, 20]
+
+[base.lots_row_lw]
+measure = "lots_row_lw"
+band    = [6, 6]
+
+[base.lots_row_le]
+measure = "lots_row_le"
+band    = [6, 6]
+
+[base.storeys_1]
+measure = "storeys_1"
+band    = [17, 17]
+
+[base.storeys_2]
+measure = "storeys_2"
+band    = [19, 19]
+
+[base.storeys_3]
+measure = "storeys_3"
+band    = [13, 13]
+
+[base.narrowest_m]
+measure = "narrowest_m"
+band    = [12.0, 12.0]
+
+[base.widest_m]
+measure = "widest_m"
+band    = [20.0, 20.0]
+
+[base.party_walls]
+measure = "party_walls"
+band    = [88, 88]
+
+[base.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[base.overlap]
+measure = "overlap"
+band    = [0, 0]
+
+[base.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[base.keep_out]
+measure = "keep_out"
+band    = [0, 0]
+
+[base.unowned_crossing]
+measure = "unowned_crossing"
+band    = [0, 0]
+
+[base.row_open]
+measure = "row_open"
+band    = [0, 0]
+
+[base.row_stair]
+measure = "row_stair"
+band    = [0, 0]
+
+[base.row_meets]
+measure = "row_meets"
+band    = [0, 0]
+
+[base.row_bent]
+measure = "row_bent"
+band    = [0, 0]
+
+[base.row_short]
+measure = "row_short"
+band    = [0, 0]
+
+[base.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[base.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[base.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[base.instances]
+measure = "instances"
+band    = [2320, 2320]
+
+[base.blocks]
+measure = "blocks"
+band    = [1360, 1360]
+
+[base.doors]
+measure = "doors"
+band    = [49, 49]
+
+[base.doors_on_street]
+measure = "doors_on_street"
+band    = [49, 49]
+
+[base.roof_tiles]
+measure = "roof_tiles"
+band    = [282, 282]
+
+[base.parapet]
+measure = "parapet"
+band    = [678, 678]
+
+[base.left_m_max]
+measure = "left_m_max"
+band    = [10.4, 10.4]
+
+[base.written_features]
+measure = "written_features"
+band    = [19, 19]
+
+[base.written_numbers]
+measure = "written_numbers"
+band    = [78, 78]
+
+[base.build_ms]
+measure = "build_ms"
+band    = [0, 120000]
+
+
+# ------------------------------------------------------------------------------------------ remodel
+# A piece remodelled: the windows block swapped for Kenney's large window, same box. Said
+# (`asset.remodelled`, triangles 44 -> 28); no piece added, removed or moved; every house kept.
+
+[remodel.errors]
+measure = "errors"
+band    = [0, 0]
+
+[remodel.remodelled]
+measure = "remodelled"
+band    = [1, 1]
+
+[remodel.revised]
+measure = "revised"
+band    = [0, 0]
+
+[remodel.added]
+measure = "added"
+band    = [0, 0]
+
+[remodel.removed]
+measure = "removed"
+band    = [0, 0]
+
+[remodel.moved]
+measure = "moved"
+band    = [0, 0]
+
+[remodel.buildings_kept]
+measure = "buildings_kept"
+band    = [49, 49]
+
+[remodel.instances]
+measure = "instances"
+band    = [2320, 2320]
+
+[remodel.build_ms]
+measure = "build_ms"
+band    = [0, 120000]
+
+
+# ------------------------------------------------------------------------------------------ module
+# The module changed: the kit read at scale 5, a block 5 m. Every block revised and named
+# (`asset.revised`, nine assets); every row re-fills the same frontages with fewer, bigger houses, 49
+# to 38, fronts 15 to 25 m. Two lots of the high street's north row west of the lane are not
+# returned (`row_meets`): a house 25 m deep now reaches the lane's first house, whose row starts at
+# a share of the lane's length. Said, not mended: the lane's frontage is written in shares.
+
+[module.errors]
+measure = "errors"
+band    = [0, 0]
+
+[module.warnings]
+measure = "warnings"
+band    = [11, 11]
+
+[module.revised]
+measure = "revised"
+band    = [9, 9]
+
+[module.buildings]
+measure = "buildings"
+band    = [38, 38]
+
+[module.buildings_kept]
+measure = "buildings_kept"
+band    = [0, 0]
+
+[module.row_meets]
+measure = "row_meets"
+band    = [2, 2]
+
+[module.plot_lost]
+measure = "plot_lost"
+band    = [0, 0]
+
+[module.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[module.doors_on_street]
+measure = "doors_on_street"
+band    = [38, 38]
+
+[module.doors_off_street]
+measure = "doors_off_street"
+band    = [0, 0]
+
+[module.narrowest_m]
+measure = "narrowest_m"
+band    = [15.0, 15.0]
+
+[module.widest_m]
+measure = "widest_m"
+band    = [25.0, 25.0]
+
+[module.instances]
+measure = "instances"
+band    = [1758, 1758]
+
+[module.build_ms]
+measure = "build_ms"
+band    = [0, 120000]
+
+
+# ------------------------------------------------------------------------------------------ move_street
+# The street moved: the high street 12 m south and the lane's foot 32 m east, six numbers changed in
+# five tables. The frontages and the rows follow; the lane is 12 m longer and holds 14 houses for 12,
+# the north side re-fills either side of the lane's new foot. 52 houses, every door on its street,
+# none in another's place; every piece moved or replaced, since every house stands 12 m south.
+
+[move_street.errors]
+measure = "errors"
+band    = [0, 0]
+
+[move_street.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[move_street.plot_lost]
+measure = "plot_lost"
+band    = [0, 0]
+
+[move_street.buildings]
+measure = "buildings"
+band    = [52, 52]
+
+[move_street.buildings_added]
+measure = "buildings_added"
+band    = [5, 5]
+
+[move_street.buildings_removed]
+measure = "buildings_removed"
+band    = [2, 2]
+
+[move_street.buildings_moved]
+measure = "buildings_moved"
+band    = [47, 47]
+
+[move_street.lots_row_wn]
+measure = "lots_row_wn"
+band    = [11, 11]
+
+[move_street.lots_row_en]
+measure = "lots_row_en"
+band    = [7, 7]
+
+[move_street.lots_row_lw]
+measure = "lots_row_lw"
+band    = [7, 7]
+
+[move_street.lots_row_le]
+measure = "lots_row_le"
+band    = [7, 7]
+
+[move_street.lots_row_s]
+measure = "lots_row_s"
+band    = [20, 20]
+
+[move_street.overlap_m2]
+measure = "overlap_m2"
+band    = [0.0, 0.0]
+
+[move_street.doors_on_street]
+measure = "doors_on_street"
+band    = [52, 52]
+
+[move_street.doors_off_street]
+measure = "doors_off_street"
+band    = [0, 0]
+
+[move_street.row_meets]
+measure = "row_meets"
+band    = [0, 0]
+
+[move_street.row_open]
+measure = "row_open"
+band    = [0, 0]
+
+[move_street.added]
+measure = "added"
+band    = [180, 180]
+
+[move_street.removed]
+measure = "removed"
+band    = [97, 97]
+
+[move_street.moved]
+measure = "moved"
+band    = [2223, 2223]
+
+[move_street.build_ms]
+measure = "build_ms"
+band    = [0, 120000]

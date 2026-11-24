@@ -234,4 +234,31 @@ Changed so far:
     instance of it re-drawn, nothing moves); `module`: the kit read at `scale = 5` (every row
     re-fills its frontage with bigger blocks); `move_street`: the street bent and moved (the rows
     follow and re-fill). Measures with their protocol; a sheet in Godot.
+- **T1, 2026-11-24.** Built as the note says, with three things the note did not foresee. The
+  street was first drawn at an angle and no house had a flat roof (lay.py rule 9 tiles none on a
+  building turned off the axes): both streets now run along the axes, and the rule is filed. On
+  the slope, two houses side by side each levelled their plot 1.5 m past their shared wall, so the
+  later by name took the other's ground (`plot_lost` on every house of the lane): a plot now keeps
+  off a `party` side (lay.py rule 19) and `check` reads no ground along one (rules 12, 13), and a
+  row passes `ground` to its houses (K11 had kept it off rows for this reason). And the views,
+  written as numbers, stood inside the moved street's houses: they stand on the streets now
+  (`on`). Measured: 49 houses, 2320 pieces, every door on its street, 0 overlap, 10 `plot_lost`
+  (the lane's terrace stepping at its party walls' ends); `remodel` said and nothing moved;
+  `module` 49 to 38 houses with 2 `row_meets` (a frontage in shares); `move_street` every row
+  followed, 52 houses. Challenge 33 stays `Partly`, with what is owed said: a street off the axes,
+  a frontage in shares, a stair asked of a kit with none (TODO.md, lib/building).
+  The independent review found one missing `along` name losing every row its line (the lines were
+  read in one call; now one a name), one row's fault stopping every row (a row's `params` is said at
+  that row and the others are laid; a line that bends or holds no lot is `row_bent` or `row_short`,
+  a warning, since a street moved under a row is not the row's text), the ground inside the lower
+  house of each lane pair standing on its neighbour's bank along the whole party wall and `check`
+  no longer reading it (a plot's own ground is now its level after every plot's bank, `kind.plot`'s
+  `flat` at order 2, the sill at 3; read once from the height field: every post inside every house
+  within 0.000001 m of its level), `check` taking `party` on trust (it now reads a party wall from
+  the outlines), a point in a straight side stepping as a slant (`inset_sides`), the measures'
+  fronts read from the wrong side, and unread `at = [0, 0]` counted as written (a row's point now
+  stands on its line's start). And `check` reads no ground within one post of a party wall's ends,
+  where two plots' levels meet across one post. With those, the base has no warning, and `module`
+  none but its nine revised assets and two `row_meets`. Also mended, from F6's review: a pack whose
+  `root` climbs to the working directory was `build.pack_root_far` (case `build/pack_root_climbs`).
 

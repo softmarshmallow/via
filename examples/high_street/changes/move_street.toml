@@ -1,0 +1,18 @@
+# The third change: the street moved. The high street runs 12 m further south and the church lane
+# leaves it 32 m further east: six numbers changed, in five tables. The frontages follow the streets and
+# the rows follow the frontages (row.py rule 10): the lane is longer and holds more houses, the
+# north side of the high street re-fills either side of the lane's new foot. No house is written.
+[feature.high_street]
+path = [[0, 88], [320, 88]]
+
+[feature.lane_foot]
+on = { ref = "high_street", t = 0.6 }
+
+[feature.church_lane]
+path = [[192, 224]]
+
+[feature.front_wn]
+follows = { ref = "high_street", span = [0.01, 0.58], offset = 6 }
+
+[feature.front_en]
+follows = { ref = "high_street", span = [0.62, 0.99], offset = 6 }

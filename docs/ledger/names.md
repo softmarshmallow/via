@@ -114,7 +114,7 @@ has and on which fields, its surfaces, its mounts, and whether it is an exit or 
 | `footing` | `building` | Grammar, Representation switch | anchored; surface top |
 | `platform` | `building` | Grammar, Representation switch | anchored; surface floor |
 | `yard` | `building` | Grammar | anchored |
-| `plot` | `building` | Profile | shaped; 1 effect on role:surface |
+| `plot` | `building` | Profile | shaped; 2 effects on role:surface |
 | `pipe` | `building` | Linear placement, Grammar | anchored |
 | `pipe_leg` | `building` | Linear placement, Meeting, Representation switch | surface line |
 | `room` | `building` | Grammar | anchored |

@@ -14,6 +14,12 @@
 # store: the base, then each change with --against the base, one build each. Measured 2026-11-23.
 # A band is the measured number: not a target, it says where someone looks.
 
+# T1 of docs/plan-fixes.md, 2026-11-25: check.py reads no ground along a party wall (a neighbour's
+# wall stands against it, read from the outlines) or within one post of its ends. Two of the rows'
+# houses had ground over their floor only along a party wall: every section's `ground_over` falls by
+# two (one in `flush`), and nothing else moved. Measured with the release `via` of e1fc651 and T1's
+# library, one fresh store, one build each.
+
 # The fix plan's F2 (docs/plan-fixes.md), 2026-11-24: check.py's rule 13 (R78) says ground over a
 # floor off a plot. Every change's `warnings` grew by exactly its new `ground_over` and by nothing
 # else, and that row was added: eleven houses stepping with the slope have ground over their floor
@@ -32,11 +38,11 @@ band    = [0, 0]
 
 [base.warnings]
 measure = "warnings"
-band    = [11, 11]
+band    = [9, 9]
 
 [base.ground_over]
 measure = "ground_over"
-band    = [11, 11]
+band    = [9, 9]
 
 [base.buildings]
 measure = "buildings"
@@ -133,11 +139,11 @@ band    = [0, 0]
 
 [bare.warnings]
 measure = "warnings"
-band    = [12, 12]
+band    = [10, 10]
 
 [bare.ground_over]
 measure = "ground_over"
-band    = [11, 11]
+band    = [9, 9]
 
 [bare.buildings]
 measure = "buildings"
@@ -229,11 +235,11 @@ band    = [0, 0]
 
 [shallow.warnings]
 measure = "warnings"
-band    = [12, 12]
+band    = [10, 10]
 
 [shallow.ground_over]
 measure = "ground_over"
-band    = [11, 11]
+band    = [9, 9]
 
 [shallow.buildings]
 measure = "buildings"
@@ -426,11 +432,11 @@ band    = [0, 0]
 
 [flush.warnings]
 measure = "warnings"
-band    = [11, 11]
+band    = [10, 10]
 
 [flush.ground_over]
 measure = "ground_over"
-band    = [11, 11]
+band    = [10, 10]
 
 [flush.buildings]
 measure = "buildings"
@@ -523,11 +529,11 @@ band    = [0, 0]
 
 [jetty.warnings]
 measure = "warnings"
-band    = [14, 14]
+band    = [12, 12]
 
 [jetty.ground_over]
 measure = "ground_over"
-band    = [11, 11]
+band    = [9, 9]
 
 [jetty.open]
 measure = "open"
@@ -562,11 +568,11 @@ band    = [0, 0]
 
 [jetty_bay.warnings]
 measure = "warnings"
-band    = [12, 12]
+band    = [10, 10]
 
 [jetty_bay.ground_over]
 measure = "ground_over"
-band    = [11, 11]
+band    = [9, 9]
 
 [jetty_bay.open]
 measure = "open"
@@ -603,11 +609,11 @@ band    = [0, 0]
 
 [ell.warnings]
 measure = "warnings"
-band    = [12, 12]
+band    = [10, 10]
 
 [ell.ground_over]
 measure = "ground_over"
-band    = [12, 12]
+band    = [10, 10]
 
 [ell.buildings]
 measure = "buildings"
@@ -655,11 +661,11 @@ band    = [0, 0]
 
 [ell_wide.warnings]
 measure = "warnings"
-band    = [13, 13]
+band    = [11, 11]
 
 [ell_wide.ground_over]
 measure = "ground_over"
-band    = [12, 12]
+band    = [10, 10]
 
 [ell_wide.buildings]
 measure = "buildings"
@@ -692,11 +698,11 @@ band    = [0, 0]
 
 [wider.warnings]
 measure = "warnings"
-band    = [12, 12]
+band    = [10, 10]
 
 [wider.ground_over]
 measure = "ground_over"
-band    = [11, 11]
+band    = [9, 9]
 
 [wider.buildings]
 measure = "buildings"

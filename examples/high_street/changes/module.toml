@@ -1,0 +1,5 @@
+# The second change: the kit's module changed. The kit is read at `scale = 5` in place of 4, so a
+# block is 5 m and a storey 3.125 m (packs/make_cases.py), and every row re-fills its frontage
+# with bigger houses: fewer lots, the same frontages. The facts file is the one accepted at
+# scale 4, so the build names every block it revised.
+pack = "packs/module.toml"

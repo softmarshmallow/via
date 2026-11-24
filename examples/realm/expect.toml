@@ -20,6 +20,15 @@
 # and the case `shrine`. A band is the measured number: not a target, it says where someone looks. A time's band
 # is wide: it is the machine's, and the row says only that the build finished in that time.
 
+# T1 of docs/plan-fixes.md, 2026-11-25: check.py reads no ground along a party wall (a neighbour's
+# wall stands against it, read from the outlines) or within one post of its ends, and a plot's own
+# ground is its level after every plot's bank (`kind.plot`'s `flat`). `new_seed` and
+# `village_moved` lose one and two `ground_over`, both on the village rows' party walls; `shrine`
+# loses its `plot_lost`: the shrine's plot no longer banks over the temple's ground, which holds its
+# level under the temple (its wall's foot 0.9 m over the ground all round, as in the base), so the
+# case now shows the mend, not the fault. Measured with the release `via` of e1fc651 and T1's
+# library, one fresh store, one build each.
+
 # The fix plan's F2 (docs/plan-fixes.md), 2026-11-24: check.py's rules 13 and 14 (R78) say what
 # nothing said before. Every change's `warnings` grew by exactly its new `ground_over` and
 # `in_water` and by nothing else, and those two rows were added: five houses of the village rows
@@ -500,11 +509,11 @@ band    = [0, 0]
 
 [new_seed.warnings]
 measure = "warnings"
-band    = [31, 31]
+band    = [30, 30]
 
 [new_seed.ground_over]
 measure = "ground_over"
-band    = [6, 6]
+band    = [5, 5]
 
 [new_seed.in_water]
 measure = "in_water"
@@ -775,7 +784,7 @@ band    = [0, 0]
 
 [shrine.warnings]
 measure = "warnings"
-band    = [8, 8]
+band    = [7, 7]
 
 [shrine.ground_over]
 measure = "ground_over"
@@ -787,7 +796,7 @@ band    = [0, 0]
 
 [shrine.plot_lost]
 measure = "plot_lost"
-band    = [1, 1]
+band    = [0, 0]
 
 [shrine.added]
 measure = "added"
@@ -807,11 +816,11 @@ band    = [16, 16]
 
 [shrine.foot_max_mm]
 measure = "foot_max_mm"
-band    = [1259, 1259]
+band    = [900, 900]
 
 [shrine.foot_bare_dm]
 measure = "foot_bare_dm"
-band    = [154, 154]
+band    = [0, 0]
 
 [shrine.buried_max_mm]
 measure = "buried_max_mm"
@@ -844,11 +853,11 @@ band    = [0, 0]
 
 [village_moved.warnings]
 measure = "warnings"
-band    = [13, 13]
+band    = [11, 11]
 
 [village_moved.ground_over]
 measure = "ground_over"
-band    = [11, 11]
+band    = [9, 9]
 
 [village_moved.in_water]
 measure = "in_water"

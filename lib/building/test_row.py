@@ -247,9 +247,11 @@ class Rows(unittest.TestCase):
         self.assertEqual(R["fill_for"]([{"storeys": [2]}], 2), [])
 
     def test_a_fault_is_said_of_its_row(self):
-        with self.assertRaises(R["ParamError"]) as c:
-            plan([("south", [(18000, 16000)], dict(SOUTH)), ("west", [(18000, 50200)], dict(SOUTH, lots=[]))])
-        self.assertEqual((c.exception.row, c.exception.key), ("west", "lots"))
+        # Said at that row, and the other rows are laid (T1's review: one row's fault stopped all).
+        got, notes = plan([("south", [(18000, 16000)], dict(SOUTH)), ("west", [(18000, 50200)], dict(SOUTH, lots=[]))])
+        said = [(n["row"], n["key"]) for n in notes if n["code"] == "params"]
+        self.assertEqual(said, [("west", "lots")])
+        self.assertEqual({b["row"] for b in got}, {"south"})
 
     def test_the_hint_of_two_rows_meeting_counts_lots_not_buildings(self):
         """A first lot refused for its stair is still the first lot: the second lot's hint is
@@ -271,9 +273,9 @@ class Rows(unittest.TestCase):
                             ({"lots": [{"bays": 3, "door": 3}]}, "lots"), ({"lots": [{"bays": 3, "wide": 1}]}, "lots"),
                             ({"depth": 0}, "depth"), ({"heights": [0]}, "heights"), ({"to": [18, 16]}, "to"),
                             ({"to": [1]}, "to"), ({"kit": ""}, "kit"), ({"storeys": 0}, "storeys")):
-            with self.assertRaises(R["ParamError"]) as c:
-                plan([("south", [(18000, 16000)], dict(SOUTH, **change))])
-            self.assertEqual(c.exception.key, key, change)
+            got, notes = plan([("south", [(18000, 16000)], dict(SOUTH, **change))])
+            self.assertEqual([(n["code"], n["key"]) for n in notes if n["code"] == "params"], [("params", key)], change)
+            self.assertEqual(got, [], change)
 
     def test_whole_numbers_read_through_the_engine_are_floats(self):
         got, _ = plan([("s", [(18000, 16000)], dict(SOUTH, depth=4.0, lots=[{"bays": 4.0, "storeys": 3.0}], to=[30.6, 16]))])
@@ -762,3 +764,87 @@ class EllRoof(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Along(unittest.TestCase):
+    """Rule 10: a row along a line feature, read as `_line`."""
+
+    def attrs(self, line, **kw):
+        a = {"along": "front", "_line": line, "kit": "k", "depth": 4, "lots": [{"bays": 4}, {"bays": 3}]}
+        a.update(kw)
+        return a
+
+    def test_frontage_is_the_line(self):
+        got, notes = R["plan_row"]("r", [(0, 0)], self.attrs([(10000, 5000), (20000, 5000), (32200, 5000)]), FACTS)
+        self.assertEqual(got[0]["ring"][0], (10000, 5000))     # from the line's start, not the row's point
+        self.assertEqual(got[1]["ring"][1], (10000 + 22200, 5000))
+        self.assertEqual(notes, [])                              # 4 and 3 bays and their posts close 22.2 m
+
+    def test_reverse_runs_from_the_end(self):
+        got, _ = R["plan_row"]("r", [(0, 0)], self.attrs([(32200, 5000), (10000, 5000)], reverse=True), FACTS)
+        self.assertEqual(got[0]["ring"][0], (10000, 5000))
+        self.assertGreater(got[0]["ring"][2][1], 5000)           # on the left of the way it runs: north
+
+    def test_a_bent_line_is_not_laid_and_the_others_are(self):
+        with self.assertRaises(R["Unlaid"]) as c:
+            R["plan_row"]("r", [(0, 0)], self.attrs([(0, 0), (20000, 400), (40000, 0)]), FACTS)
+        self.assertEqual(c.exception.code, "row_bent")
+        self.assertIn("bends", c.exception.message)
+        got, notes = R["plan"]([("bent", [(0, 0)], self.attrs([(0, 0), (20000, 400), (40000, 0)])),
+                                ("good", [(0, 0)], self.attrs([(0, 30000), (22200, 30000)]))], lambda t: FACTS)
+        self.assertEqual([n["code"] for n in notes], ["row_bent"])
+        self.assertEqual({b["row"] for b in got}, {"good"})
+
+    def test_a_line_within_ten_mm_is_straight(self):
+        R["plan_row"]("r", [(0, 0)], self.attrs([(0, 0), (20000, 9), (22200, 0)]), FACTS)
+
+    def test_along_and_to_missing_and_point(self):
+        for a, word in ((self.attrs([(0, 0), (9000, 0)], to=[9, 0]), "both"),
+                        (self.attrs(None), "no feature"), (self.attrs([(0, 0)]), "a point")):
+            with self.assertRaises(R["ParamError"]) as c:
+                R["plan_row"]("r", [(0, 0)], a, FACTS)
+            self.assertIn(word, c.exception.message)
+
+
+class Widths(unittest.TestCase):
+    """Rule 11: a row that fills its frontage from `widths`."""
+
+    def lay(self, length, widths=(3, 4, 5), name="r"):
+        a = {"to": [length / 1000, 0], "kit": "k", "depth": 4, "widths": list(widths)}
+        return R["plan_row"](name, [(0, 0)], a, FACTS)
+
+    def test_fills_and_says_what_is_left(self):
+        got, notes = self.lay(80000)
+        m, r = FACTS["module"], FACTS["reach"]
+        used = sum(b["to"] - b["from"] for b in got)
+        self.assertEqual([n["code"] for n in notes], ["row_left"])
+        self.assertEqual(notes[0]["left"], 80000 - used)
+        self.assertLess(notes[0]["left"], 3 * m + 2 * r)        # less than the narrowest lot
+        self.assertTrue(all((b["to"] - b["from"] - 2 * r) // m in (3, 4, 5) for b in got))
+
+    def test_neighbours_differ_and_builds_agree(self):
+        got, _ = self.lay(200000)
+        bays = [(b["to"] - b["from"] - 2 * FACTS["reach"]) // FACTS["module"] for b in got]
+        # The last may repeat its neighbour where only that width fits what is left.
+        self.assertTrue(all(a != b for a, b in zip(bays[:-2], bays[1:-1])), bays)
+        again, _ = self.lay(200000)
+        self.assertEqual([b["ring"] for b in got], [b["ring"] for b in again])
+
+    def test_a_longer_frontage_keeps_the_lots_before(self):
+        short, _ = self.lay(60000)
+        long_, _ = self.lay(120000)
+        self.assertGreater(len(long_), len(short))
+        for a, b in zip(short[:-1], long_):                      # the last may widen to fit
+            self.assertEqual((a["key"], a["ring"]), (b["key"], b["ring"]))
+
+    def test_refusals(self):
+        with self.assertRaises(R["ParamError"]) as c:
+            R["plan_row"]("r", [(0, 0)], {"to": [80, 0], "kit": "k", "depth": 4, "widths": [3],
+                                          "lots": [{"bays": 3}]}, FACTS)
+        self.assertIn("both", c.exception.message)
+        with self.assertRaises(R["Unlaid"]) as c:
+            self.lay(5000)
+        self.assertEqual(c.exception.code, "row_short")
+        with self.assertRaises(R["ParamError"]) as c:
+            self.lay(80000, widths=[3, 0])
+        self.assertEqual(c.exception.key, "widths")

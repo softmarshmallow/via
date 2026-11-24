@@ -389,7 +389,10 @@ The rules (ours, written for this library; README.md is the design note):
    compound with a gate is named in no developer's account read (docs/research/Modular kit
    failures in studios.md, section 12).
 19. **Level ground.** `ground = "level"`: the building also returns a `plot` (kinds.toml),
-   `<building>_plot`: its outline moved out `PLOT_APRON` (1.5 m) on every side, with `level`
+   `<building>_plot`: its outline moved out `PLOT_APRON` (1.5 m) on every side but a side whose
+   `faces` word is `party` (sides numbered as rule 1 reads the outline; a neighbour's wall stands
+   along it, row.py rule 4: its ground is the neighbour's floor, and an apron there would level it
+   at this building's height; T1; `check` reads whether a neighbour stands there), with `level`
    the ground rule 2 read, so the land under the building and a walk round it is held at the
    level its floor was reckoned from, and banks to the land outside no steeper than the plot's
    `grade`. The wall's foot (rule 13) is then judged against that level, not against the land
@@ -398,8 +401,9 @@ The rules (ours, written for this library; README.md is the design note):
    `authority.max_change`, naming the plot: the land is too steep for this building as it is
    written. The building's `max_cut` (3 m) and `grade` (0.3) are its plot's, passed on, so
    that record is answered on the building: a larger `max_cut`, or gentler ground. A plot is
-   shaped with `order = 1`, so a way's bed in any layer gives way to it, and a doorway's sill,
-   ordered after it (kinds.toml), holds on it. What this step cannot see is what shapes the
+   shaped with `order = 1`, so a way's bed in any layer gives way to it, and its own ground again
+   at `order = 2` (`flat`), so another plot's bank does not reach under this building (T1); a
+   doorway's sill, ordered after both (kinds.toml), holds on it. What this step cannot see is what shapes the
    ground after it: an anchored kind, a second plot over the same ground (another building's,
    returned by this step in the same layer), or anything ordered after it. The wall's foot is
    judged here against the level the plot states; `check` judges it again against the ground
@@ -1990,6 +1994,29 @@ def inner_walls(openings, footprint, kit, prefix):
 
 # --- floors and roofs from pieces (rules 9 and 10) ---------------------------------------------
 
+def inset_sides(ring, ds):
+    """`ring` (counter-clockwise) with side `i` (from vertex `i` to `i + 1`) moved `ds[i]` mm
+    inward: each vertex goes to where its two moved sides meet (`inset` with one distance)."""
+    es = edges(ring)
+    out = []
+    for i, p in enumerate(ring):
+        a, b = es[i - 1], es[i]
+        da, db = ds[i - 1], ds[i]
+        cross = a["e"][0] * b["e"][1] - a["e"][1] * b["e"][0]
+        if abs(cross) < 1e-9:
+            # A point in a straight side: its two halves moved apart step there, square (T1's
+            # review: one point made the step a slant).
+            if da != db:
+                out.append((p[0] + a["n"][0] * da, p[1] + a["n"][1] * da))
+            out.append((p[0] + b["n"][0] * db, p[1] + b["n"][1] * db))
+            continue
+        # the point q with (q - p).n_a = da and (q - p).n_b = db
+        na, nb = a["n"], b["n"]
+        det = na[0] * nb[1] - na[1] * nb[0]
+        out.append((p[0] + (da * nb[1] - na[1] * db) / det, p[1] + (na[0] * db - da * nb[0]) / det))
+    return out
+
+
 def inset(ring, d):
     """`ring` (counter-clockwise) with every side moved `d` mm inward: each vertex goes to where
     the two moved sides meet. Sides that are parallel at a vertex (a point in a straight wall)
@@ -2624,7 +2651,9 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
            "footings": [footings[k] for k in sorted(footings)], "kit": kit, "heights": heights, "terraces": [],
            "platform": {"key": pkey, "region": footprint, "level": lv[0]} if col else None}
     if level:
-        out["plot"] = {"key": f"{prefix}_plot", "region": [rnd(q) for q in inset(footprint, -PLOT_APRON)],
+        faces = attrs.get("faces") if isinstance(attrs.get("faces"), list) else []
+        apron = [0 if i < len(faces) and faces[i] == "party" else -PLOT_APRON for i in range(len(footprint))]
+        out["plot"] = {"key": f"{prefix}_plot", "region": [rnd(q) for q in inset_sides(footprint, apron)],
                        "level": round(ground_m, 3), "grade": _num(attrs, "grade", 0.3, 0.0),
                        "max_cut": _num(attrs, "max_cut", 3.0, 0.0)}
     for k in range(storeys):

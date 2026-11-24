@@ -196,23 +196,29 @@ class Kinds(unittest.TestCase):
         self.assertEqual(e["field"], "role:surface")
         self.assertEqual(e["value"], "= clamp(v, level - grade * d, level + grade * d)")
         self.assertEqual(e["max_change"], "= max_cut")
-        self.assertEqual(e["order"], 1)                   # after a way's bed (0), before a sill (2), below
-        self.assertEqual(list(p["effect"]), ["level"])    # it keeps nothing off: a kit's pieces stand on it
+        self.assertEqual(e["order"], 1)                   # after a way's bed (0), before its flat (2) and a sill (3), below
+        self.assertEqual(list(p["effect"]), ["level", "flat"])   # it keeps nothing off: a kit's pieces stand on it
+        flat = p["effect"]["flat"]                        # its own ground level, over every plot's bank (T1)
+        self.assertEqual((flat["value"], flat["order"]), ("= level", 2))
 
     def test_a_sill_is_shaped_and_laid_after_every_other_shaped_entry(self):
         d = KINDS["doorway"]
         self.assertEqual(d["authority"], "shaped")
-        self.assertEqual(d["effect"]["sill"]["order"], 2)
+        self.assertEqual(d["effect"]["sill"]["order"], 3)
         self.assertEqual(d["effect"]["sill"]["value"], "= sill_z")
-        self.assertGreater(d["effect"]["sill"]["order"], KINDS["plot"]["effect"]["level"].get("order", 0))
+        self.assertGreater(d["effect"]["sill"]["order"], KINDS["plot"]["effect"]["flat"].get("order", 0))
 
-    def test_building_and_court_take_the_word_and_a_row_does_not(self):
+    def test_building_court_and_row_take_the_word(self):
+        # A row passes it to each house since T1 of docs/plan-fixes.md: a house's plot keeps off
+        # a party wall, so neighbours' plots no longer level one another's ground.
         self.assertEqual(KINDS["building"]["defaults"]["ground"], "")
         self.assertEqual(KINDS["court"]["defaults"]["ground"], "")
-        self.assertNotIn("ground", KINDS["row"]["defaults"])
+        self.assertEqual(KINDS["row"]["defaults"]["ground"], "")
         self.assertIn("ground", L["ATTRS"])
         self.assertIn("ground", K["ATTRS"])
-        self.assertNotIn("ground", K["PASSED"])
+        self.assertNotIn("ground", K["PASSED"])           # a court levels one plot under all of it
+        row = runpy.run_path(os.path.join(HERE, "row.py"))
+        self.assertIn("ground", row["PASSED"])
 
 
 LAND = tomllib.load(open(os.path.join(HERE, "..", "land", "kinds.toml"), "rb"))["kind"]
@@ -699,3 +705,48 @@ class Wiring(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PartySides(unittest.TestCase):
+    """check reads a party wall from the outlines (T1's review), not from `faces`."""
+
+    def test_a_neighbour_along_a_side(self):
+        a = [(0, 0), (12000, 0), (12000, 20000), (0, 20000)]
+        b = [(12000, 0), (28000, 0), (28000, 20000), (12000, 20000)]
+        self.assertEqual(C["party_sides"](a, [b]), [False, True, False, False])
+        self.assertEqual(C["party_sides"](b, [a]), [False, False, False, True])
+        self.assertEqual(C["party_sides"](a, []), [False] * 4)              # a word alone is no neighbour
+        far = [(12500, 0), (28000, 0), (28000, 20000), (12500, 20000)]      # half a metre off
+        self.assertEqual(C["party_sides"](a, [far]), [False] * 4)
+        short = [(12000, 0), (20000, 0), (20000, 800), (12000, 800)]        # along 0.8 m only
+        self.assertEqual(C["party_sides"](a, [short]), [False] * 4)
+        cw = list(reversed(b))                                              # a clockwise neighbour
+        self.assertEqual(C["party_sides"](a, [cw]), [False, True, False, False])
+
+
+class PartyWalls(unittest.TestCase):
+    """T1 of docs/plan-fixes.md: a plot keeps off a party wall, and check reads no ground there."""
+
+    RING = [(0, 0), (12000, 0), (12000, 20000), (0, 20000)]
+
+    def test_inset_sides_moves_each_side_its_own_distance(self):
+        got = L["inset_sides"](self.RING, [-1500, 0, -1500, -1500])
+        self.assertEqual([tuple(round(v) for v in p) for p in got],
+                         [(-1500, -1500), (12000, -1500), (12000, 21500), (-1500, 21500)])
+        mid = [(0, 0), (6000, 0), (12000, 0), (12000, 20000), (0, 20000)]   # a point in the south side
+        got = L["inset_sides"](mid, [-1500, 0, -1500, -1500, -1500])
+        self.assertIn((6000, -1500), [tuple(round(v) for v in p) for p in got])
+        self.assertIn((6000, 0), [tuple(round(v) for v in p) for p in got])  # a square step, not a slant
+        same = L["inset_sides"](self.RING, [-1500] * 4)
+        self.assertEqual(same, L["inset"](self.RING, -1500))
+
+    def test_foot_points_skip_a_party_side(self):
+        every = C["foot_points"](self.RING)
+        open_ = C["foot_points"](self.RING, ["front", "party", "back", "party"])
+        self.assertEqual(len(every), 24 + 40 + 24 + 40)
+        self.assertEqual(len(open_), 24 + 24)
+        self.assertTrue(all(0 < x < 12000 for x, _ in open_))
+        # within a post (1 m) of a party wall's end: the step between two plots, not read
+        near = C["foot_points"](self.RING, ["front", "party", "back", "party"], 1000)
+        self.assertEqual(len(near), 20 + 20)
+        self.assertTrue(all(1000 < x < 11000 for x, _ in near))

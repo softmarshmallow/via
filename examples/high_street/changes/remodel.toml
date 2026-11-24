@@ -1,0 +1,4 @@
+# The first of the town's three changes (challenge 33): a piece remodelled. The `windows` block is
+# swapped for another of Kenney's models of the same box (packs/make_cases.py), and the pack's
+# facts file is the one accepted before: the build says the asset remodelled, and nothing moves.
+pack = "packs/remodel.toml"
