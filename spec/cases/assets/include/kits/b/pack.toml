@@ -1,0 +1,17 @@
+# Kit b: its own door (the same id as kit a's), the ground in another colour, and kit c inside it.
+# Its root is the kits' folder, which holds kit c (assets.md 2.8, "One root").
+
+root = ".."
+
+[taxon."kit/b"]
+
+[asset.door]
+primitive = "box"
+size      = [1, 0.2, 2]
+taxon     = "kit/b"
+
+[material.ground]
+colour = [0.2, 0.2, 0.2]
+
+[include.c]
+pack = "../c/pack.toml"

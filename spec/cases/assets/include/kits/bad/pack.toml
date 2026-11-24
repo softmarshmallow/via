@@ -1,0 +1,4 @@
+# A pack that is not TOML.
+
+[asset.thing
+primitive = "box"

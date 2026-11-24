@@ -1,0 +1,7 @@
+# Kit b, which reads, and a kit that does not: the pack fails as for its own fault, and once.
+
+[include.b]
+pack = "kits/b/pack.toml"
+
+[include.x]
+pack = "kits/bad/pack.toml"

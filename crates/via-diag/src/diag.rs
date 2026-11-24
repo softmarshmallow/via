@@ -239,6 +239,15 @@ impl Diag {
         self
     }
 
+    /// The same record about another subject: a pack that includes another names the included
+    /// assets by their ids in it (`assets.md` 2.8), so a record of one is filed where the build
+    /// keeps that asset.
+    #[must_use]
+    pub fn with_subject(mut self, subject: Subject) -> Diag {
+        self.0.subject = subject;
+        self
+    }
+
     /// Another thing involved.
     #[must_use]
     pub fn related(mut self, related: Related) -> Diag {

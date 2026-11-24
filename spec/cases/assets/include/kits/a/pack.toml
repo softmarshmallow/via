@@ -1,0 +1,18 @@
+# Kit a: a model door, a primitive post, the ground in one colour and a stone.
+
+[taxon."kit/a"]
+
+[asset.door]
+file  = "door.gltf"
+taxon = "kit/a"
+
+[asset.post]
+primitive = "box"
+size      = [0.5, 0.5, 3]
+taxon     = "kit/a"
+
+[material.ground]
+colour = [0.5, 0.4, 0.3]
+
+[material.stone]
+colour = [0.6, 0.6, 0.6]

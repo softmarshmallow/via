@@ -1,0 +1,7 @@
+# A kit with a key a pack does not take.
+
+bogus = 1
+
+[asset.stone]
+primitive = "box"
+size      = [1, 1, 1]

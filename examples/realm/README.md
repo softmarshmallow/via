@@ -6,8 +6,7 @@ makes, joined by a street, two roads, a trail and a ford, with the player map as
 film. Every number below is from a run; its protocol is in `expect.toml`.
 
 ```
-python3 examples/realm/packs/make_pack.py      # after a kit changes (Python 3.11+)
-via pack accept examples/realm/packs/realm.toml
+via pack accept examples/realm/packs/realm.toml   # after a kit changes
 via build examples/realm/world.toml --out build/realm --store build/realm.store
 engines/godot/sheet.sh --before build/realm --out review/realm --pack $PWD/examples/realm/packs --option water=tag:water_level
 python3 tools/map_render.py build/realm build/realm/export/map --out review/realm-map   # needs PIL
@@ -20,7 +19,7 @@ python3 tools/map_render.py build/realm build/realm/export/map --out review/real
 | `layers/ways.toml` | The street, the ford, the roads and the trail; the ground's paint |
 | `layers/walls.toml` | `lay` and `check`, which read every building the layers below wrote or returned |
 | `layers/names.toml` | The map's names and areas, the map's export, the reach lint, the views |
-| `packs/make_pack.py`, `packs/realm.toml` | One pack holding the three kits (below, "Reusing a kit") |
+| `packs/realm.toml` | One pack that includes the three kits' own packs (below, "Reusing a kit") |
 | `changes/` | Nine changes an author of a map would make, each built `--against` the base |
 | `measure.py`, `expect.toml` | The measures, and the rows a build must hold |
 
@@ -84,6 +83,13 @@ its `role:` tag (docs/design/kit-contract.md), so no world names a piece by its 
 for K10's last review: **one script, and nothing in the kits**. What it says: a pack is a file
 and an id is global to a world, so a kit is not yet a unit a second world can name (Asset law 5
 holds for what a kit states, not for where it lives). Filed under `spec/assets.md`.
+
+**Since the fix plan's F6** a pack takes another in whole, `[include.<prefix>]` (spec/assets.md
+2.8), and `packs/realm.toml` is three includes and the land's paints: the script is gone. Each
+kit's ids are under its prefix as the script wrote them, each kit's files are written from the
+realm's `root`, and the realm's `ground` stands over the kits'. The pack listing and the facts
+file were byte-equal to the script's, and every row of `expect.toml` held. An edit to a kit's
+own pack now re-runs the realm's build by itself, named at the kit's line.
 
 ## Before
 
@@ -226,9 +232,10 @@ Each built `--against` the base on its store. "Nothing" means no record at all.
   `check` says it (`plot_lost`); nothing prevents it (TODO, `lib/building`).
 - **A step that reads the ground in the layer where the ways that shape it stand** is
   `diag.internal` (TODO, `spec/graph.md`): the ways are a layer above the places for that.
-- **A kit is not a unit a second world can name** (TODO, `spec/assets.md`; above).
+- **A kit is a unit a second world can name** since F6 (above): `[include.<prefix>]`.
 - **Steps up to a door** are still not built: each doorway raises a mound to its sill, plainest
   in front of the temple's podium (K7, TODO).
-- **No imports, no import of a settlement**: the realm is one world because of the pack; with a
-  kit a world can name, each settlement could be its own example, imported.
+- **No imports, no import of a settlement**: the realm was one world because of the pack. Now that
+  a kit is a unit a world can name (F6), each settlement could be its own example, imported; not
+  done.
 - **Pipes** are not placed: K9's hold on level ground only.

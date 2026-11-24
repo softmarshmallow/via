@@ -1,0 +1,12 @@
+# The two kits again, with no ground of this pack's own, and an id of its own that kit a's post
+# takes under its prefix.
+
+[include.a]
+pack = "kits/a/pack.toml"
+
+[include.b]
+pack = "kits/b/pack.toml"
+
+[asset.a_post]
+primitive = "box"
+size      = [1, 1, 1]

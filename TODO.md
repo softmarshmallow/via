@@ -1085,7 +1085,7 @@ open, and its place here is its destination.
       corner is bevelled, so its bevel then leaves a notch on the room side against the wall
       block beside it, and nothing says so: rule 16 (`kit_turn`) judges a corner only as `lay` sets
       it at an outside corner. (From F5b's review, 2026-11-24.)
-- [ ] **A kit is not a unit a second world can name.** A world has one pack (`pack` takes a
+- [x] **A kit is not a unit a second world can name.** A world has one pack (`pack` takes a
       string: a list is `doc.type`), and two kits' packs joined are `doc.syntax` (a taxon
       table twice) and then seven ids bound twice (`base`, `base_corner`, `door`, `post`,
       `roof_gable`, `roof_slope`, `tile`) and a material coloured two ways. `examples/realm`
@@ -1093,7 +1093,20 @@ open, and its place here is its destination.
       115 lines). What a kit states travels with its taxon (R66); where its pieces live and what
       they are called does not. For K10's last review: a pack that includes another, or ids
       scoped by taxon.
-      (From K11 of docs/plan-kits.md, 2026-11-23.)
+      (From K11 of docs/plan-kits.md, 2026-11-23.) Done in F6 of docs/plan-fixes.md: a pack
+      includes another, `[include.<prefix>]` (spec/assets.md 2.8); realm's script is gone.
+- [ ] **`build.pack_root_far` fires wrongly for a pack in a subfolder whose `root` climbs to the
+      world's folder** (`pack = "packs/top.toml"`, `root = ".."`): crates/via-cli/src/build.rs
+      pops the parent to "" (lines 795-815). Not from includes; found by F6's review, 2026-11-24.
+- [ ] **An include by a pack's name** (spec/assets.md 2.8): `pack = "starter"` in an include is
+      `doc.not_yet`; only a path is taken, because `pack::read` has no roots to look a name up
+      in (they are the build's and the command line's). Built when a world asks to include a
+      shipped pack. (From F6 of docs/plan-fixes.md, 2026-11-24.)
+- [ ] **A record from inside an included kit's model names its file from that kit's folder**
+      (`pack:door.glb`), where the kit's own text is named from the outermost pack's
+      (`pack:kits/a/pack.toml`): the model is read by the kit's own pack read, before its paths are
+      moved under the outer root. The subject (`asset.door`) and the message hold; the file is
+      ambiguous when two kits have one model name. (From F6, 2026-11-24.)
 - [ ] A mount with a height (spec/assets.md 12.2), half built at K9 (R75): an asset mount has
   `rise`, and a path end or another instance's mount is held to it. Still owed: a thing placed
   `on` a risen mount (`surface.on_rise` today). It needs an instance that stands at its host's

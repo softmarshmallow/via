@@ -1,0 +1,9 @@
+# Kit c: a lamp, filed under kit b's taxon, with a default only it takes.
+
+[taxon."kit/b"]
+defaults = { collision = "hull" }
+
+[asset.lamp]
+primitive = "cylinder"
+size      = [0.3, 0.3, 4]
+taxon     = "kit/b"

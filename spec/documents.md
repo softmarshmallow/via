@@ -37,7 +37,7 @@ be LF or CRLF; both read the same. Every file is flat and keyed by id (R1): `[fe
 | world | `name`, `extent`, `resolution`, `seed`, `datum` (M4), `include`, `pack`, `chunk` (M6), `[budget]` (M6), `[layer.<id>]`, and any world table (below) | the command line (`build.md`) | the path given |
 | layer | world tables only | `[layer.<id>] file` in the world file | relative to the world file |
 | kinds file | `include`, `[kind.<name>]` | a library name in an `include` list | section 4 |
-| pack | the keys `assets.md` 2.1 lists (`root`, `[defaults]`, `[taxon."<path>"]`, `[asset.<id>]`, `[material.<name>]`) | `pack` | `assets.md` |
+| pack | the keys `assets.md` 2.1 lists (`root`, `[defaults]`, `[taxon."<path>"]`, `[asset.<id>]`, `[material.<name>]`, `[include.<prefix>]`) | `pack` | `assets.md` |
 | change file | a change body (section 6) | the command line (`build.md`), by path | the path given |
 
 World tables are: `[let]`, `[field.*]`, `[feature.*]`, `[instance.*]`, `[set.*]`, `[run.*]`,

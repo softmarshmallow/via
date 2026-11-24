@@ -441,6 +441,7 @@ A pack is a document users write. It may name files; a world may not (principle 
 | `[asset.<id>.mount.<name>]` | table | A named place on an asset: `at`, `face` in the asset's frame, `connector`, `rise`. Named `<instance>.<name>`. No `t`, `offset` or `surface`. | assets |
 | `rise` | number | On an asset mount: metres the mount stands above the surface its instance stands on; default 0 (K9, R75; `assets.md` 2.7, `surfaces.md` 3.2). Not on a kind mount. | assets |
 | `[material.<name>]` | table | A material `paint` names: `colour`, `file`, `repeat`, `params`. | assets |
+| `[include.<prefix>]` | table | Another pack taken in whole: `pack`, a path from this pack file. Its asset `<id>` is `<prefix>_<id>` here (`assets.md` 2.8, F6). | assets |
 
 Pack terms (`assets.md`): **declared fact** (written in the pack), **measured fact** (read from a
 model by the build), the **facts file** (measured facts kept by `via pack accept`), **stand-in** (a model

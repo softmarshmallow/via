@@ -11,7 +11,7 @@ Diagnostics table holds its row, and the `data` fields its records carry. `data.
 added where the row gives a nearest name (`spec/diagnostics.md` 1.4); a row that gives the
 nearest value, resolution, candidate or instance does not count as one.
 
-364 codes in 23 groups. 1 have no bad and fixed example yet; their explain text is the
+366 codes in 23 groups. 3 have no bad and fixed example yet; their explain text is the
 chapter's summary and hint.
 
 | Group | Chapter | Codes |
@@ -32,7 +32,7 @@ chapter's summary and hint.
 | [`import`](#import) | `spec/composition.md` | 20 |
 | [`load`](#load) | `spec/build.md` | 5 |
 | [`num`](#num) | `spec/numbers.md` | 12 |
-| [`pack`](#pack) | `spec/assets.md` | 14 |
+| [`pack`](#pack) | `spec/assets.md` | 16 |
 | [`place`](#place) | `spec/rules.md` | 12 |
 | [`protocol`](#protocol) | `spec/protocol.md` | 34 |
 | [`run`](#run) | `spec/rules.md` | 4 |
@@ -3662,6 +3662,8 @@ Fixed: width = 1.001
 | `pack.bad_axes` | error | 1 |  | `front` or `up` is not one of the six signed axes, or both name one axis. |
 | `pack.bad_facts` | error | 2 |  | The facts file is not readable, or not in 4.1's form. |
 | `pack.bad_model` | error | 2 |  | A model is not readable glTF 2.0, holds a non-finite number or a bad index count, or uses an extension v0 does not read. |
+| `pack.include_clash` | error | 7 |  | Two packs of one include tree give one name two meanings (2.8): an included asset id, after its prefix, that is this pack's or another include's; a material two includes give differently where this pack gives none. Names both. |
+| `pack.include_cycle` | error | 7 |  | A pack includes itself, or one that leads back to it (2.8); names the chain. |
 | `pack.material_repeat` | error | 1 |  | A material has `file` without `repeat`, or `repeat` without `file`. |
 | `pack.missing_file` | error | 1 | `nearest` | `root`, a file the pack names, or a URI a model references, does not exist. M1 checks `root` and a material's `file`; M2 adds models, `detail` copies and their URIs. |
 | `pack.not_found` | error | 1 | `nearest` | The `pack` string names no file; the roots searched, by place. |
@@ -3718,6 +3720,24 @@ A model is not readable glTF 2.0, holds a non-finite number or a bad index count
 To fix: Re-export without the named extension, or fix the pointed part.
 Bad:   oak.glb using KHR_draco_mesh_compression
 Fixed: oak.glb exported without compression
+```
+
+### `pack.include_clash`
+
+error, milestone 7, `spec/assets.md`.
+
+```text
+Two packs of one include tree give one name two meanings (2.8): an included asset id, after its prefix, that is this pack's or another include's; a material two includes give differently where this pack gives none. Names both.
+To fix: Choose another prefix, or declare the material in this pack.
+```
+
+### `pack.include_cycle`
+
+error, milestone 7, `spec/assets.md`.
+
+```text
+A pack includes itself, or one that leads back to it (2.8); names the chain.
+To fix: Take out the include that closes the loop.
 ```
 
 ### `pack.material_repeat`

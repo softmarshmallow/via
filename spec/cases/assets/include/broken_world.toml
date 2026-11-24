@@ -1,0 +1,12 @@
+name       = "yard"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "broken.toml"
+
+[field.height]
+role = "surface"
+base = 20
+
+[instance.t]
+asset = "x_thing"
+at    = [20, 20]

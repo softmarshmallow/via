@@ -580,7 +580,8 @@ pub(crate) fn leaves_of(p: &Prepared, options: &Options) -> Vec<(String, NodeId,
                 ));
                 // `assets.md` 2.2 and 4: the files the pack binds, and its facts file.
                 for (leaf, d) in p.pack.leaves() {
-                    let family = if leaf == p.pack.facts_display {
+                    // The facts file and every included pack's text are texts (2.8).
+                    let family = if p.pack.is_text_leaf(&leaf) {
                         "source"
                     } else {
                         "input"

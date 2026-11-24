@@ -267,6 +267,12 @@ pub struct Pack {
     /// what a build lists, counts against its budgets and hands a lint or export step. This
     /// world's own text never resolves them: placing and selecting read `assets` alone.
     pub brought: BTreeMap<String, Brought>,
+    /// The pack text that declares each included asset (2.8), by its id here, as records name
+    /// that text (`pack:<path>`); an asset this pack declares itself is not listed.
+    pub text_of: BTreeMap<String, String>,
+    /// Every included pack's text (2.8), nested ones too: its name as records write it, and its
+    /// digest. Each is a text source of the graph, as this pack file is.
+    pub included: Vec<(String, via_graph::Digest)>,
 }
 
 /// An asset bound by an import's pack (`composition.md` 10).
@@ -308,6 +314,17 @@ impl Pack {
                 },
             );
         }
+    }
+
+    /// The pack text that declares asset `id`: an include's (2.8), or this pack's.
+    pub fn text_file(&self, id: &str) -> &str {
+        self.text_of.get(id).map_or(&self.display, String::as_str)
+    }
+
+    /// Whether a leaf (`leaves`) is a text source of the graph, not a bound file: the facts file
+    /// and every included pack's text (2.8).
+    pub fn is_text_leaf(&self, leaf: &str) -> bool {
+        leaf == self.facts_display || self.included.iter().any(|(n, _)| n == leaf)
     }
 
     /// The pack path a hint names.
@@ -377,8 +394,12 @@ impl Pack {
     /// A pack with no model asset binds no file and needs no facts file: it has no leaves.
     pub fn leaves(&self) -> Vec<(String, via_graph::Digest)> {
         let mut out: BTreeMap<String, via_graph::Digest> = BTreeMap::new();
+        // 2.8: an included pack's text is read as this pack file is, model or none.
+        for (name, d) in &self.included {
+            out.insert(name.clone(), *d);
+        }
         if !self.assets.values().any(|a| a.model.is_some()) {
-            return Vec::new();
+            return out.into_iter().collect();
         }
         for a in self.assets.values() {
             let Some(m) = &a.model else { continue };
@@ -872,6 +893,20 @@ fn is_ccw_simple(ring: &[(i64, i64)]) -> bool {
 
 /// Reads a pack file. Pack-wide faults (8.3) come back as diagnostics.
 pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
+    read_chain(path, display, &mut Chain::default())
+}
+
+/// The packs that include the one being read (2.8).
+#[derive(Default)]
+struct Chain {
+    /// Each pack's canonical path, outermost first: a pack met again is `pack.include_cycle`.
+    packs: Vec<PathBuf>,
+    /// The outermost pack's root, canonical and as written: every included pack's text is named
+    /// by its path from there, as that pack's own files are, however deep it is included.
+    names: Option<(PathBuf, crate::asset::RootOf)>,
+}
+
+fn read_chain(path: &Path, display: &str, chain: &mut Chain) -> (Option<Pack>, Vec<Diag>) {
     let raw = match std::fs::read(path) {
         Ok(b) => b,
         Err(e) => {
@@ -1131,13 +1166,13 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
                     pack.materials.insert(name.clone(), Material { colour });
                 }
             }
-            ("asset" | "root" | "defaults", _) => {}
+            ("asset" | "root" | "defaults" | "include", _) => {}
             (other, _) => r.fault(
                 codes::doc::UNKNOWN_KEY,
                 "pack",
                 None,
                 &format!("`{other}` is not a key of a pack"),
-                "a pack holds `root`, `[defaults]`, `[taxon]`, `[asset]` and `[material]`",
+                "a pack holds `root`, `[defaults]`, `[taxon]`, `[asset]`, `[material]` and `[include]`",
             ),
         }
     }
@@ -1217,7 +1252,371 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
         }
     }
     pack.declared = declared;
+    // 2.8: the packs this one includes, after its own assets, so a clash names this pack's.
+    if let Some(inc) = table.get("include") {
+        let here = path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
+        let me = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        chain.packs.push(me);
+        let outermost = chain.names.is_none();
+        if outermost {
+            chain.names = root.as_deref().map(|d| (lexical(d), pack.root.clone()));
+        }
+        include(&mut r, inc, &here, root.as_deref(), &mut pack, chain);
+        if outermost {
+            chain.names = None;
+        }
+        chain.packs.pop();
+    }
     (Some(pack), r.diags)
+}
+
+/// A path made absolute and its `.` and `..` folded away by its text, not by the file system: the
+/// pack's own files are found so (`documents.md` 7.2), and a kit linked into the root's folder is
+/// under it as a loader finds it (F6's review).
+fn lexical(p: &Path) -> PathBuf {
+    let abs = if p.is_absolute() {
+        p.to_path_buf()
+    } else {
+        std::env::current_dir().unwrap_or_default().join(p)
+    };
+    let mut out = PathBuf::new();
+    for c in abs.components() {
+        match c {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                out.pop();
+            }
+            other => out.push(other),
+        }
+    }
+    out
+}
+
+/// Records about an included asset re-filed under its id here (2.8): `asset.<id>` and the keys
+/// below it become `asset.<new>`, so a build keeps them where it keeps the asset.
+fn refiled(d: &Diag, id: &str, new: &str) -> Diag {
+    let s = d.subject().to_string();
+    let head = format!("asset.{id}");
+    match s.strip_prefix(&head) {
+        Some(rest) if rest.is_empty() || rest.starts_with('.') => {
+            match Subject::parse(&format!("asset.{new}{rest}")) {
+                Ok(subject) => d.clone().with_subject(subject),
+                Err(_) => d.clone(),
+            }
+        }
+        _ => d.clone(),
+    }
+}
+
+/// Takes the packs of `[include]` into `pack` (2.8): each read as on its own, its asset ids under
+/// its prefix, its files written from this pack's `root`.
+fn include(
+    r: &mut Reader<'_>,
+    inc: &toml::Value,
+    here: &Path,
+    root: Option<&Path>,
+    pack: &mut Pack,
+    chain: &mut Chain,
+) {
+    let Some(inc) = inc.as_table() else {
+        r.fault(
+            codes::doc::TYPE,
+            "include",
+            None,
+            &format!(
+                "`include` is a table of packs by prefix; found {}",
+                form_word(inc)
+            ),
+            "write `[include.<prefix>]` with `pack = \"<path>\"`",
+        );
+        return;
+    };
+    let own_materials: BTreeSet<String> = pack.materials.keys().cloned().collect();
+    // Which include gave each id and material not this pack's own: for a clash's message.
+    let mut given: BTreeMap<String, String> = BTreeMap::new();
+    let mut material_from: BTreeMap<String, String> = BTreeMap::new();
+    let root_canon = root.map(lexical);
+    for (prefix, body) in inc {
+        let subject = format!("include.{prefix}");
+        if !via_doc::is_id(prefix) {
+            r.fault(
+                codes::identity::BAD_ID,
+                &subject,
+                None,
+                &format!("the include prefix `{prefix}` is not an id"),
+                "write an id: a lower-case letter, then letters, digits or `_`",
+            );
+            continue;
+        }
+        let Some(body) = body.as_table() else {
+            r.fault(
+                codes::doc::TYPE,
+                &subject,
+                None,
+                &format!("an include is a table; found {}", form_word(body)),
+                &format!("write `[include.{prefix}]` with `pack = \"<path>\"`"),
+            );
+            continue;
+        };
+        for k in body.keys().filter(|k| k.as_str() != "pack") {
+            r.fault(
+                codes::doc::UNKNOWN_KEY,
+                &subject,
+                Some(k),
+                &format!("`{k}` is not a key of an include"),
+                "an include holds `pack`, the path to the pack file",
+            );
+        }
+        let written = match body.get("pack") {
+            Some(toml::Value::String(s)) => s.clone(),
+            other => {
+                r.fault(
+                    codes::doc::TYPE,
+                    &subject,
+                    other.map(|_| "pack"),
+                    &match other {
+                        Some(v) => format!("`pack` takes a path; found {}", form_word(v)),
+                        None => "the include names no `pack`".to_string(),
+                    },
+                    "write `pack = \"<path to the pack file>\"`, relative to this pack file",
+                );
+                continue;
+            }
+        };
+        if !(written.contains('/') || written.ends_with(".toml")) {
+            r.fault(
+                codes::doc::NOT_YET,
+                &subject,
+                Some("pack"),
+                &format!("`{written}` is a pack name; an include takes a path only, for now"),
+                "write the path to the pack file, relative to this pack file",
+            );
+            continue;
+        }
+        if written.starts_with('/') || written.contains('\\') {
+            r.fault(
+                codes::doc::PATH_FORM,
+                &subject,
+                Some("pack"),
+                &format!("`{written}` is not a relative path with `/` separators"),
+                "write the path relative to this pack file",
+            );
+            continue;
+        }
+        let target = here.join(&written);
+        if !target.is_file() {
+            r.fault(
+                codes::pack::NOT_FOUND,
+                &subject,
+                Some("pack"),
+                &format!("the included pack `{written}` is not a file"),
+                "write the path relative to this pack file",
+            );
+            pack.failed = true;
+            continue;
+        }
+        let canon = std::fs::canonicalize(&target).unwrap_or_else(|_| target.clone());
+        if let Some(at) = chain.packs.iter().position(|c| *c == canon) {
+            let names: Vec<String> = chain.packs[at..]
+                .iter()
+                .chain(std::iter::once(&canon))
+                .map(|c| {
+                    c.file_name()
+                        .map_or_else(String::new, |n| n.to_string_lossy().into_owned())
+                })
+                .collect();
+            r.fault(
+                codes::pack::INCLUDE_CYCLE,
+                &subject,
+                Some("pack"),
+                &format!(
+                    "the includes lead back to a pack that includes them: {}",
+                    names.join(" includes ")
+                ),
+                "take out the include that closes the loop",
+            );
+            pack.failed = true;
+            continue;
+        }
+        // 2.8 "One root": the included pack file, and below its files, lie under this root.
+        let under = |p: &Path| -> Option<String> {
+            let rel = p.strip_prefix(root_canon.as_ref()?).ok()?;
+            Some(
+                rel.components()
+                    .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                    .collect::<Vec<_>>()
+                    .join("/"),
+            )
+        };
+        let Some(text_rel) = under(&lexical(&target)) else {
+            if root_canon.is_some() {
+                pack.failed = true;
+                r.fault(
+                    codes::pack::OUTSIDE_ROOT,
+                    &subject,
+                    Some("pack"),
+                    &format!("the included pack `{written}` is not under this pack's `root`"),
+                    "set this pack's `root` to a folder that holds both packs and their files",
+                );
+            }
+            continue;
+        };
+        let display = chain
+            .names
+            .as_ref()
+            .and_then(|(top, written)| {
+                let rel = lexical(&target).strip_prefix(top).ok()?.to_path_buf();
+                let rel: Vec<_> = rel
+                    .components()
+                    .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                    .collect();
+                Some(written.pack_path(&rel.join("/")))
+            })
+            .unwrap_or_else(|| pack.root.pack_path(&text_rel));
+        let (sub, diags) = read_chain(&target, &display, chain);
+        // Its own facts file is not read (2.8 "One facts file"): this pack's speaks for it. A
+        // pack included twice (two kits that include one, or one under two prefixes) is read
+        // twice, and its records are raised once (`diagnostics.md` 4; F6's review).
+        for d in diags {
+            if *d.code() != via_diag::DiagCode::Core(codes::pack::BAD_FACTS)
+                && !r.diags.contains(&d)
+            {
+                r.diags.push(d);
+            }
+        }
+        if let Ok(bytes) = std::fs::read(&target) {
+            pack.included
+                .push((display.clone(), via_graph::Digest::of(&bytes)));
+        }
+        let Some(sub) = sub else {
+            pack.failed = true;
+            continue;
+        };
+        if sub.failed {
+            pack.failed = true;
+        }
+        pack.included.extend(sub.included.iter().cloned());
+        // Each bound file, from the kit's root to this one's: a kit's root may climb above this
+        // root while its files lie under it (F6's review).
+        let sub_root = lexical(&sub.root.root);
+        let moved = |rel: &str| under(&lexical(&sub_root.join(rel)));
+        let outside = sub
+            .assets
+            .values()
+            .filter_map(|a| a.model.as_ref())
+            .any(|m| {
+                m.files
+                    .keys()
+                    .chain(std::iter::once(&m.file))
+                    .chain(m.detail.iter())
+                    .any(|f| moved(f).is_none())
+            });
+        if outside {
+            pack.failed = true;
+            r.fault(
+                codes::pack::OUTSIDE_ROOT,
+                &subject,
+                Some("pack"),
+                &format!(
+                    "the files of the included pack `{written}` are not under this pack's `root`"
+                ),
+                "set this pack's `root` to a folder that holds both packs and their files",
+            );
+            continue;
+        }
+        let moved = |rel: &str| moved(rel).unwrap_or_else(|| rel.to_string());
+        for (id, a) in &sub.assets {
+            let new = format!("{prefix}_{id}");
+            let from = given.get(&new).cloned().or_else(|| {
+                pack.assets
+                    .contains_key(&new)
+                    .then(|| "this pack".to_string())
+            });
+            if let Some(from) = from {
+                r.fault(
+                    codes::pack::INCLUDE_CLASH,
+                    &subject,
+                    None,
+                    &format!(
+                        "the included asset `{id}` is `{new}` here, an id {from} already gives"
+                    ),
+                    "choose another prefix, or rename one of the assets",
+                );
+                continue;
+            }
+            let mut a = a.clone();
+            a.id.clone_from(&new);
+            if let Some(m) = a.model.as_mut() {
+                m.file = moved(&m.file);
+                for d in &mut m.detail {
+                    *d = moved(d);
+                }
+                m.files = std::mem::take(&mut m.files)
+                    .into_iter()
+                    .map(|(k, v)| (moved(&k), v))
+                    .collect();
+                for c in &mut m.copies {
+                    c.0 = moved(&c.0);
+                }
+            }
+            if let Some(d) = sub.asset_diags.get(id) {
+                let d = d.iter().map(|d| refiled(d, id, &new)).collect();
+                pack.asset_diags.insert(new.clone(), d);
+            }
+            if let Some(l) = sub.lines.get(id) {
+                pack.lines.insert(new.clone(), l.clone());
+            }
+            pack.text_of
+                .insert(new.clone(), sub.text_file(id).to_string());
+            // Its declaration: the kit's text and line, under its id here (a record raised about
+            // it later is filed where the build keeps the asset: F6's review).
+            if let Some((_, site)) = sub.declared.get(&format!("asset.{id}")) {
+                let subject = Subject::parse(&format!("asset.{new}")).unwrap_or(Subject::World);
+                pack.declared
+                    .insert(format!("asset.{new}"), (subject, site.clone()));
+            }
+            given.insert(new.clone(), format!("the include `{prefix}`"));
+            pack.assets.insert(new, a);
+        }
+        for t in &sub.taxa {
+            pack.taxa.insert(t.clone());
+            if let Some(d) = sub.declared.get(&format!("taxon.{t}")) {
+                pack.declared
+                    .entry(format!("taxon.{t}"))
+                    .or_insert_with(|| d.clone());
+            }
+        }
+        for (name, m) in &sub.materials {
+            if own_materials.contains(name) {
+                continue;
+            }
+            match pack.materials.get(name) {
+                Some(have) if have != m => {
+                    let other = material_from.get(name).cloned().unwrap_or_default();
+                    r.fault(
+                        codes::pack::INCLUDE_CLASH,
+                        &subject,
+                        None,
+                        &format!(
+                            "the material `{name}` is given differently by the include `{prefix}` and {other}, and this pack gives none"
+                        ),
+                        &format!("declare `[material.{name}]` in this pack"),
+                    );
+                }
+                Some(_) => {}
+                None => {
+                    pack.materials.insert(name.clone(), m.clone());
+                    material_from.insert(name.clone(), format!("the include `{prefix}`"));
+                    if let Some(d) = sub.declared.get(&format!("material.{name}")) {
+                        pack.declared.insert(format!("material.{name}"), d.clone());
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// The keys `defaults` may hold (2.5).

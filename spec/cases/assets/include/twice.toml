@@ -1,0 +1,7 @@
+# One kit under two prefixes: read twice, its fault said once.
+
+[include.p]
+pack = "kits/dup/pack.toml"
+
+[include.q]
+pack = "kits/dup/pack.toml"

@@ -4,7 +4,7 @@ resolution = 1
 datum      = "sea"
 seed       = 31
 include    = ["land", "water", "ways", "town", "building", "map", "review"]
-pack       = "packs/realm.toml"               # three kits as one pack (packs/make_pack.py)
+pack       = "packs/realm.toml"               # three kits, each included whole (assets.md 2.8)
 
 [let]
 sea = 0                                       # metres: the sea's surface

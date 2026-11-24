@@ -1171,7 +1171,7 @@ pub(crate) fn finish_from(
                 a.clone(),
                 lines
                     .iter()
-                    .map(|(k, l)| (k.clone(), (pk.display.clone(), *l)))
+                    .map(|(k, l)| (k.clone(), (pk.text_file(a).to_string(), *l)))
                     .collect(),
             );
         }

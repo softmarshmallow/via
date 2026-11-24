@@ -1,0 +1,16 @@
+# Each include wrong in one way.
+
+[include.byname]
+pack = "starter"
+
+[include.nopack]
+
+[include.missing]
+pack = "kits/none/pack.toml"
+
+[include.Upper]
+pack = "kits/c/pack.toml"
+
+[include.extra]
+pack   = "kits/c/pack.toml"
+prefix = "x"

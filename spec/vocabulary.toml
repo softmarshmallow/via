@@ -824,6 +824,11 @@ takes = "table"
 chapter = "assets"
 sections = ["Pack"]
 
+[key."[include.<prefix>]"]
+takes = "table"
+chapter = "assets"
+sections = ["Pack"]
+
 # Section 4: owed key words whose syntax a later chapter fixes; `chapter` names it.
 [owed."follows"]
 chapter = "geometry"

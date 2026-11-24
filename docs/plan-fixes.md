@@ -21,7 +21,8 @@ What counts as a fix, in the order it is done:
 4. **A gap that keeps a real kit out.** Model scale, a turn nothing checks, a kit only one world
    can name.
 
-Then the town (T1), which needs the scale from F8 and closes challenge 33.
+Then the town (T1), which needs the scale from F8 and closes challenge 33. Then the canonical
+demo (D), the final milestone.
 
 ## Milestones
 
@@ -38,6 +39,7 @@ Then the town (T1), which needs the scale from F8 and closes challenge 33.
 | F7 | **Mounts from the model.** A mount read from a named node in the model where the model has one; a stated mount stays where it has none (item 8). A port's hole held to its mount. | works' 51 mount numbers fall by those its models carry; `low` (a rise restated a metre low) is said. |
 | F8 | **Scale, and the ruling on challenge 33.** A scale factor in the pack, applied where the model is measured (item 6). Then the ruling: is lib/town's kit run still the town's way, now that `row.py` lays rows of kit-built houses (item 3)? | Kenney's kit stands at a person's size with no `door_narrow`; the ruling is in `docs/doctrine.md`. |
 | T1 | **A town on someone else's kit.** A market street of Kenney's buildings at a person's size, by whichever way F8 rules, with the town's changes run on it: a piece remodelled, the module changed, the street moved. | Challenge 33 closes or says what is still owed; a sheet; measures with their protocol. |
+| D | **The canonical demo.** Asked by the owner on 2026-11-24, the plan's final milestone: one world that proves the tech and is visually astonishing, so that a person who sees it once knows why to use via. Designed after T1, in `docs/design/demo.md`, from what F1 to T1 leave standing. | A picture and a short recording a person reads at a glance: a world rendered in an engine, and a change of a few lines that it settles around; every claim it makes is a build anyone can run again, with its numbers and their protocol. |
 
 ## How every milestone runs
 
@@ -183,3 +185,53 @@ Changed so far:
   of one name is `pack.bad_model`), a malformed `at` or `face` silent beside a node (`doc.type`),
   `face` lost on a Z-up model (now read from the node's own axis the pack's `front` names) and
   `sink` left out of a measured `rise` (subtracted). All mended, with cases.
+- **D added, 2026-11-24.** The owner: when the plan is done, a canonical demo that both proves the
+  tech and is visually astonishing, one to show people, "at a glance, this is the reason why they
+  should use via". It is the plan's final milestone, after T1.
+- **F6, 2026-11-24.** A pack takes another whole, `[include.<prefix>]` with `pack = "<path>"`
+  (spec/assets.md 2.8). Chosen over ids scoped by taxon: an id stays one word a world places by,
+  and a kit needs no edit to be included, because a library reads a kit by its taxon and tags.
+  The included pack is read as on its own (its root, defaults and taxa's defaults reach its own
+  assets only), its ids are `<prefix>_<id>`, prefixes compose for a kit inside a kit, taxa are one
+  tree, this pack's material stands over a kit's, and every file is written from this pack's
+  root, so the loader and the manifest are unchanged. One facts file, this pack's: a world accepts
+  a kit's revision for itself. Each included text is a source of the graph. New codes
+  `pack.include_clash` and `pack.include_cycle`. `examples/realm`'s pack is three includes and its
+  paints; `make_pack.py` (115 lines) is gone, and the pack listing and the facts file are
+  byte-equal to what the script wrote; every realm row holds. Not taken yet: an include by a
+  pack's name (`doc.not_yet`; filed).
+  The independent review found records about an included asset filed under the kit's own id
+  (`facts:door`, a node that is not there or another asset's), so a warm build replayed a revision
+  after it was accepted and kept a missing model's error after the file came back: such records
+  now name the asset by its id here. It found a kit that failed to read leaving this pack unfailed
+  (a follow-up `asset.unknown`), a kit linked into the root's folder refused (roots are now read by
+  the path's text, as pack paths are), a kit read twice saying its faults twice, and a kit's root
+  above this root refused though its files lay under it (each file is now judged). All mended,
+  with the case's new actions. One fault older than F6 (`build.pack_root_far` for a pack in a
+  subfolder whose root climbs) is filed.
+- **T1's note, 2026-11-24.** A new example, `examples/high_street`: a market street of Kenney's
+  kit at a person's size, laid by lib/building's `row` (R79), with the town's three changes.
+  - *The pack.* Kenney's kit as a person's world states it: `scale = 4` on the kit's taxon and
+    its `shared` lengths in metres (a block 4 m, a storey 2.5 m, the doorway 1 m, the eaves
+    0.556 m), its models the ones `examples/borrowed/fetch.py` fetches, found from that folder.
+    Not an include of borrowed's pack: that pack's `shared` lengths are in the kit's own units
+    and are read as metres (assets.md 2.5), so the same kit at another scale states them again;
+    borrowed's pack stays the record of the kit at its own size (F8). What that costs is counted.
+  - *Rows that follow their street.* A row's frontage today is two numbers, so a moved street
+    leaves its rows behind (realm's `village_moved` rewrote ten numbers). `row.py` gains rule 10:
+    `along = "<line>"` in place of `to`, the frontage read from a line feature, typically a
+    kind-less line that `follows` the street at a setback (geometry.md 4): the core moves the line
+    when the street moves, and the row with it. The frontage must be straight; a bent line is
+    `params` (one row per straight part).
+  - *A row that fills its frontage.* Rule 11: `widths = [3, 4, 5]` in place of `lots`, lots laid
+    from the start each as wide as a hash of the row's name and the lot's number picks (as rule 5
+    picks heights), while one fits; what is left, less than the narrowest lot, is said in the
+    step's `rows` info, not as `row_open`: the author asked for the frontage filled, not closed.
+    So a longer street gets more houses, and the lots before keep their names and widths.
+  - *The world.* lib/town's street on a gentle slope, both sides in rows, a cross street; flat
+    roofs and hips, heights from a list.
+  - *Changes.* `remodel`: the windows block swapped for another of the kit's models (every
+    instance of it re-drawn, nothing moves); `module`: the kit read at `scale = 5` (every row
+    re-fills its frontage with bigger blocks); `move_street`: the street bent and moved (the rows
+    follow and re-fill). Measures with their protocol; a sheet in Godot.
+

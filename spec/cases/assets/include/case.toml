@@ -1,0 +1,169 @@
+format    = "via-case-1"
+summary   = "assets.md 2.8 `[include.<prefix>]` (the fix plan's F6): two kits taken in whole, one with a third inside it. Each kit's ids are under its prefix (a_door, b_door, b_c_lamp), each kit's defaults reach its own assets only, this pack's material stands over the kits'; one facts file, files written from this pack's root; the manifest's pack paths are under it. An edit to an included kit's text re-runs what read it, named at that text's line. A declared fact of a kit revised is asset.revised under the id here, and after accepting, gone from a warm build (records are filed where the build keeps the asset). An id or a material two packs give, a cycle, a kit outside root, a pack name, and malformed includes, each said; a kit that fails fails the pack once, with no follow-up; a kit read twice says its fault once."
+milestone = 7
+actions   = ["accept", "list", "base", "edit", "build", "revise", "revised", "reaccept", "warm", "clash", "cycle", "outside", "bad", "broken", "twice"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.accept.file.facts]
+path   = "pack.facts.toml"
+equals = "expected/pack.facts.toml"
+
+[action.list]
+via         = ["pack", "list", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+out         = "build/base"
+diagnostics = "includes"
+
+[action.base.file.path]
+path    = "build/base/manifest.json"
+pointer = "/assets/a_door/files/0/path"
+value   = "kits/a/door.gltf"
+
+[action.base.file.own_defaults]
+path    = "build/base/manifest.json"
+pointer = "/assets/b_c_lamp/collision"
+value   = "hull"
+
+[action.base.file.not_reached]
+path    = "build/base/manifest.json"
+pointer = "/assets/a_door/collision"
+value   = "none"
+
+[action.edit]
+write = "kits/a/pack.toml"
+from  = "later/a.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--against", "build/base", "--out", "build/next"]
+exit        = 0
+out         = "build/next"
+diagnostics = "includes"
+
+[action.build.check.changed]
+fn     = "changes_by_prefix"
+path   = "build/next/changes.json"
+prefix = "p"
+what   = ["changed"]
+
+[action.build.file.cause]
+path     = "build/next/changes.json"
+pointer  = "/entries/0/causes/0"
+includes = { cause = "asset.a_post.size", file = "pack:kits/a/pack.toml", line = 11 }
+
+[action.revise]
+write = "kits/a/pack.toml"
+from  = "later/a_sink.toml"
+
+[action.revised]
+via         = ["build", "world.toml", "--out", "build/revised"]
+exit        = 0
+out         = "build/revised"
+diagnostics = "includes"
+
+[action.revised.diag.sink]
+code    = "asset.revised"
+subject = "asset.a_door"
+
+[action.reaccept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.warm]
+via         = ["build", "world.toml", "--out", "build/warm"]
+exit        = 0
+out         = "build/warm"
+diagnostics = "includes"
+
+[action.warm.diag.gone]
+code    = "asset.revised"
+records = 0
+
+[action.clash]
+via         = ["pack", "check", "clash.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.clash.diag.id]
+code    = "pack.include_clash"
+subject = "include.a"
+
+[action.clash.diag.material]
+code    = "pack.include_clash"
+subject = "include.b"
+
+[action.cycle]
+via         = ["pack", "check", "cycle.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.cycle.diag.loop]
+code    = "pack.include_cycle"
+subject = "include.one.pack"
+file    = "pack:kits/loop/two.toml"
+
+[action.outside]
+via         = ["pack", "check", "sub/outside.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.outside.diag.root]
+code    = "pack.outside_root"
+subject = "include.a.pack"
+
+[action.bad]
+via         = ["pack", "check", "bad.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.bad.diag.name]
+code    = "doc.not_yet"
+subject = "include.byname.pack"
+
+[action.bad.diag.no_pack]
+code    = "doc.type"
+subject = "include.nopack"
+
+[action.bad.diag.missing]
+code    = "pack.not_found"
+subject = "include.missing.pack"
+
+[action.bad.diag.prefix]
+code    = "identity.bad_id"
+subject = "include.Upper"
+
+[action.bad.diag.key]
+code    = "doc.unknown_key"
+subject = "include.extra.prefix"
+
+[action.broken]
+via         = ["build", "broken_world.toml", "--out", "build/broken"]
+exit        = 1
+out         = "build/broken"
+diagnostics = "includes"
+
+[action.broken.diag.syntax]
+code = "doc.syntax"
+file = "pack:kits/bad/pack.toml"
+
+[action.broken.diag.no_follow_up]
+code    = "asset.unknown"
+records = 0
+
+[action.twice]
+via         = ["pack", "check", "twice.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.twice.diag.once]
+code    = "doc.unknown_key"
+records = 1

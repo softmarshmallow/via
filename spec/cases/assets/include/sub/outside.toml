@@ -1,0 +1,4 @@
+# This pack's root is its own folder, and the kit lies beside it, not under it.
+
+[include.a]
+pack = "../kits/a/pack.toml"

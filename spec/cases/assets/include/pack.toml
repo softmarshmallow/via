@@ -1,0 +1,13 @@
+# Two kits taken in whole (assets.md 2.8). This pack's own ground stands over both kits'.
+
+[defaults]
+collision = "box"
+
+[include.a]
+pack = "kits/a/pack.toml"
+
+[include.b]
+pack = "kits/b/pack.toml"
+
+[material.ground]
+colour = [0.4, 0.35, 0.3]

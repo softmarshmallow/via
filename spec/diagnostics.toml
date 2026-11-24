@@ -3655,6 +3655,26 @@ Bad:   oak.glb using KHR_draco_mesh_compression
 Fixed: oak.glb exported without compression
 """
 
+[pack.include_clash]
+severity = "error"
+chapter = "assets"
+milestone = 7
+summary = "Two packs of one include tree give one name two meanings (2.8): an included asset id, after its prefix, that is this pack's or another include's; a material two includes give differently where this pack gives none. Names both."
+explain = """
+Two packs of one include tree give one name two meanings (2.8): an included asset id, after its prefix, that is this pack's or another include's; a material two includes give differently where this pack gives none. Names both.
+To fix: Choose another prefix, or declare the material in this pack.
+"""
+
+[pack.include_cycle]
+severity = "error"
+chapter = "assets"
+milestone = 7
+summary = "A pack includes itself, or one that leads back to it (2.8); names the chain."
+explain = """
+A pack includes itself, or one that leads back to it (2.8); names the chain.
+To fix: Take out the include that closes the loop.
+"""
+
 [pack.material_repeat]
 severity = "error"
 chapter = "assets"

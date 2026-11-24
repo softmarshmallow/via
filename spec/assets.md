@@ -29,7 +29,9 @@ In M1, `file` and `detail` on an asset are `doc.not_yet`, naming M2.
 - A pack is a document a user writes, flat TOML keyed by id (R1), with one exception: taxa are
   keyed by path (section 5). A pack may name files; a world may not.
 - One pack per world. An import resolves its asset ids with its own pack; one id bound two ways in
-  one build is an error (`composition.md` 10).
+  one build is an error (`composition.md` 10). A pack may take in other packs whole, each under a
+  prefix (2.8): so one world builds from kits written for others, and the world still names one
+  pack.
 - Swapping the pack changes no world text.
 
 **What a swap may change (R30).** Swapping the pack swaps the look and the facts the look carries
@@ -89,6 +91,7 @@ This chapter owns the rule; `documents.md` and `vocabulary.md` point here.
 | `[asset.<id>]` | table | One asset. Keys: 2.2. |
 | `[asset.<id>.mount.<name>]` | table | A named place on the asset (2.7). |
 | `[material.<name>]` | table | A material that a `paint` names (2.6). |
+| `[include.<prefix>]` | table | Another pack taken in whole, its asset ids under `<prefix>_` (2.8). Key: `pack`. |
 
 Asset ids follow `identity.md`: `[a-z][a-z0-9_]*`, with no `.`. Asset ids form the pack's own
 namespace; they never collide with the world's ids. A dotted asset id (`house.low`) is
@@ -350,6 +353,65 @@ kind mount.
 - `rise` that is not a number, or not on the lattice, is `doc.type`.
 - A mount named `start`, `end` or `ground` is `identity.reserved`.
 - Mounts are pack-wide checks (8.3) and facts of the facts file (section 4).
+
+### 2.8 Including another pack
+
+A kit is written as a pack of its own, beside the world it was made for. `[include.<prefix>]`
+takes such a pack into this one, so a second world can name it, and several kits can stand in one
+world, without a copy or a merge script (the fix plan's F6; `examples/realm`, whose three kits
+had been merged by a 115-line script).
+
+```toml
+root = "../.."                                   # a folder that holds every included pack's files
+
+[include.v]
+pack = "../../village/packs/village.toml"        # its `door` is this pack's `v_door`
+```
+
+- **`pack`** is a path to the pack file, relative to this pack file (not to the world file),
+  in `documents.md` 7.2's form; one that is not a file is `pack.not_found`. A name looked up in
+  the roots (1.2) is not taken yet (`doc.not_yet`): no world has asked to include a shipped pack.
+  `pack` is the only key; another is `doc.unknown_key`, and an include without it is `doc.type`.
+  `<prefix>` is an id (`identity.bad_id`).
+- **Ids.** Each asset `<id>` of the included pack is `<prefix>_<id>` here, so two kits' `door`
+  are two assets. Nothing else is renamed: taxa keep their paths, mount names their names, and an
+  id written inside `params` or `shared` is passed on as written, because the core reads neither
+  (2.2). A library reads a kit by its taxon and its pieces' tags, never by id
+  (`docs/design/kit-contract.md`), so a kit needs no edit to be included.
+- **Read as on its own.** The included pack is read as `via pack check` reads it: its own `root`,
+  `[defaults]` and taxa's `defaults` resolve its own assets, and this pack's do not reach them.
+  Its own includes are taken first, so prefixes compose (`a_b_door`). A kit means what it meant
+  in its own world.
+- **Taxa** are one tree: a path two packs declare is one taxon, and a selection `@<path>` picks
+  the assets of every pack filed there. Each pack's `defaults` for a path reach its own assets
+  only.
+- **Materials** are one table. A material this pack declares stands over an included one of the
+  same name. Two included packs that give one name different materials, where this pack gives
+  none, is `pack.include_clash`, naming both. They are compared by what a build hands on of a
+  material, its `colour` (2.6).
+- **One id, one asset.** An included id (after its prefix) equal to an id of this pack or of
+  another include is `pack.include_clash`, naming both.
+- **One root.** Every file an included pack binds, and the included pack file itself, must lie
+  under this pack's `root`, read by the path's text as every pack path is (`documents.md` 7.2: a
+  kit's folder linked under the root is under it); each is written relative to it, in the facts file's `files` and the
+  manifest's pack paths (`build.md` 7), so a loader finds every model under one root. One that
+  does not is `pack.outside_root`, naming the include; the hint is a `root` that holds both.
+- **One facts file.** This pack's facts file holds every model asset, its own and its includes',
+  under its id here (section 4), and the included pack's own facts file is not read. A revision of
+  a kit is accepted by each world that uses it, `via pack accept` on its own pack: the warning
+  names that world's instances (4.2), which the kit's own acceptance never saw.
+- **An input.** Each included pack file is a text source of the graph, named as this pack's
+  bound files are, `source:pack:<its path from this pack file's folder>` (`graph.md` 1), so an
+  edit to a kit re-runs what read this pack, as an edit to this pack does.
+- **Records.** A record about an included pack's text names that file the same way, at its line:
+  that is where the fix is made. A record about one included asset (a revised fact, a model that
+  will not read) names the asset by its id here (`asset.v_door`), the id a world places and the
+  build keeps it by; a fault of the kit's text that is no one asset's (a key of the pack, a taxon)
+  keeps the subject that text writes. A pack included twice (two kits that include one, or one
+  kit under two prefixes) is read twice and its records raised once.
+- A pack that includes itself, or includes one that leads back to it, is `pack.include_cycle`,
+  naming the chain. An included pack that fails to read fails this one: its records are raised,
+  and every build that names this pack stops, as for this pack's own fault (8.3).
 
 ## 3. Measuring a model (M2)
 
@@ -1045,6 +1107,8 @@ has the "file" location form with `data.pointer` (3.1). Codes of other chapters 
 | `pack.unaccepted` | info | 2 | The pack has model assets and no facts file; revisions cannot be reported. | Run `via pack accept PACK`. |
 | `pack.bad_facts` | error | 2 | The facts file is not readable, or not in 4.1's form. | Delete it and run `via pack accept PACK`. |
 | `pack.accept_refused` | error | 2 | `via pack accept` found errors; nothing written. | Fix the listed errors, then accept again. |
+| `pack.include_clash` | error | 7 | Two packs of one include tree give one name two meanings (2.8): an included asset id, after its prefix, that is this pack's or another include's; a material two includes give differently where this pack gives none. Names both. | Choose another prefix, or declare the material in this pack. |
+| `pack.include_cycle` | error | 7 | A pack includes itself, or one that leads back to it (2.8); names the chain. | Take out the include that closes the loop. |
 | `pack.stale_facts` | info | 2 | The facts file holds ids the pack no longer has. | Run `via pack accept PACK` to drop them. |
 | `asset.unknown` | error | 1 | A world names an asset id the pack lacks. | The nearest id. |
 | `asset.source` | error | 1 | An asset has no source marker, or more than one, or lacks a key its source requires (`size`, `triangles`; 2.2). | Write exactly one of `file`, `primitive`, `engine = true`, or the named key. |
@@ -1152,6 +1216,7 @@ checks that a clean build equals the incremental one.
 | Collision by kit | 2 | `[taxon."building"] defaults = { collision = "mesh" }`, a house under it, a primitive box with `collision = "box"` | `via pack list` | `mesh` for the house, `box` for the box; no `asset.declared_measured`. |
 | Collision revised | 2 | Accepted; one asset's `collision` edited `none` to `hull` | `via build` | `asset.remodelled`; no `asset.revised`; no instance moved in the change report; the build's asset record holds `hull`. |
 | Usage | 2 | A pack of three assets, a build placing two of them | `via pack list PACK --build DIR` | Each line holds `instances`: the two counts, and 0 for the third; nothing built. |
+| Include | 7 | Two kits included, one with a third inside it; then one kit's text edited; then an id and a material two packs give, a cycle, a kit outside `root`, a pack name, malformed includes | `via pack accept`, `via build`, `via build --against`, `via pack check` | Ids under their prefixes, each kit's defaults on its own assets, one facts file with paths from this `root`; the edited instance `changed`, its cause at the kit's line; `pack.include_clash` (twice), `pack.include_cycle`, `pack.outside_root`, `doc.not_yet`, `doc.type`, `pack.not_found`, `identity.bad_id`, `doc.unknown_key` (case `assets/include`). |
 | Same bytes | 1 | The primitive pack case; from M2 the contract revision case | Built at 1 and 8 threads, on each system | Same build digest (`build.md` 12) (R26). |
 
 ## Changed from the spike
@@ -1186,7 +1251,8 @@ checks that a clean build equals the incremental one.
 - **An engine-made asset's own files** (a generator's script, an atlas) as declared inputs: decided
   in M2 by the tree case that needed them in the spike.
 - **A shared taxonomy across packs** (one tree file several packs include): decided by the M2 pack
-  swap, if two packs drift.
+  swap, if two packs drift. Since F6 (2.8) a pack can include another, and the taxa of both are one
+  tree; a tree file of its own is still not asked for.
 - **A selection as an instance's or run's `asset`** (the spike's kit run): decided by the town kit's
   run in M3, with `rules.md`.
 - **Selection by tag in a world:** decided by the first case that needs it.
